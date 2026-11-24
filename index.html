@@ -9,28 +9,30 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="data:,">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=2">
-  <script defer src="./game.js?v=2"></script>
+  <link rel="stylesheet" href="./style.css?v=3">
+  <script defer src="./locale.js?v=3"></script>
+  <script defer src="./game.js?v=3"></script>
 </head>
 <body>
   <header class="masthead">
     <div class="shell masthead-inner">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">▂▅▇▅▂</span>
-        <span><strong>한려 FM</strong><small>89.7 MHz</small></span>
+        <span><strong data-text="한려 FM">한려 FM</strong><small>89.7 MHz</small></span>
       </div>
-      <h1>마지막 방송까지 <em>8분</em></h1>
+      <h1><span data-text="마지막 방송까지">마지막 방송까지</span> <em data-text="8분">8분</em></h1>
       <div class="utilities">
+        <button class="utility" id="language" type="button" aria-label="Switch to English" lang="en">EN</button>
         <button class="utility" id="sound" type="button" aria-pressed="false">소리 켜기</button>
-        <button class="utility" id="journal-open" type="button" aria-haspopup="dialog">수첩 <span id="journal-count">0</span></button>
+        <button class="utility" id="journal-open" type="button" aria-haspopup="dialog"><span data-text="수첩">수첩</span> <span id="journal-count">0</span></button>
       </div>
     </div>
   </header>
 
   <main class="shell game">
-    <section class="hud" aria-label="현재 목표와 남은 시간">
+    <section class="hud" aria-label="현재 목표와 남은 시간" data-label="현재 목표와 남은 시간">
       <div class="mission">
-        <span class="label">현재 목표</span>
+        <span class="label" data-text="현재 목표">현재 목표</span>
         <strong id="objective">자정 전에 주민 인터뷰 원본을 방송한다</strong>
       </div>
       <div class="time">
@@ -60,39 +62,66 @@
               <p id="event" class="scene-event" hidden></p>
             </div>
             <div class="plan" id="plan" hidden></div>
-            <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동"></div>
+            <section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
+              <div class="panel-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
+              <ul id="broadcast-channels"></ul>
+            </section>
+            <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
+              <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
+              <h4 data-text="직접 확인한 사건">직접 확인한 사건</h4>
+              <ul id="observed"></ul>
+              <h4 data-text="놓친 기회">놓친 기회</h4>
+              <p id="missed"></p>
+              <h4 data-text="다음에 확인할 질문">다음에 확인할 질문</h4>
+              <p id="next-question"></p>
+            </section>
+            <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동" data-label="장면에서 할 수 있는 행동"></div>
             <div id="replay" class="replay"></div>
           </div>
         </section>
         <nav class="locations panel" id="locations" aria-labelledby="map-title" hidden>
-          <div class="panel-heading"><h2 id="map-title">방송국 지도</h2><span>이동 · 1행동</span></div>
+          <div class="panel-heading"><h2 id="map-title" data-text="방송국 지도">방송국 지도</h2><span data-text="이동 · 1행동">이동 · 1행동</span></div>
           <div id="places" class="places"></div>
         </nav>
       </div>
 
-      <aside class="side" aria-label="진행 기록">
+      <aside class="side" aria-label="진행 기록" data-label="진행 기록">
         <section class="panel side-panel">
-          <div class="panel-heading"><h2>이번 밤</h2><span class="cycle" id="cycle">1회차</span></div>
+          <div class="panel-heading"><h2 data-text="이번 밤">이번 밤</h2><span class="cycle" id="cycle">1회차</span></div>
           <ol id="timeline" class="timeline"></ol>
-          <p class="note">이동하거나 조사할 때 1분이 흐릅니다.</p>
+          <p class="note" data-text="이동하거나 조사할 때 1분이 흐릅니다.">이동하거나 조사할 때 1분이 흐릅니다.</p>
         </section>
         <section class="panel side-panel">
-          <div class="panel-heading"><h2>결말 기록</h2><span id="ending-count">0 / 3</span></div>
+          <div class="panel-heading"><h2 data-text="결말 기록">결말 기록</h2><span id="ending-count">0 / 3</span></div>
           <ul id="ending-list" class="endings"></ul>
         </section>
-        <button class="utility rewind" id="rewind" type="button" hidden>이번 밤 되감기</button>
+        <button class="utility rewind" id="rewind" type="button" data-text="되감기 검토" hidden>되감기 검토</button>
       </aside>
     </div>
   </main>
 
+  <nav class="quick" id="quick" aria-label="빠른 조작" data-label="빠른 조작" hidden>
+    <button type="button" class="utility" id="quick-journal" data-text="단서 수첩" aria-haspopup="dialog">단서 수첩</button>
+    <button type="button" class="utility" id="quick-review"></button>
+  </nav>
+
   <dialog id="journal" aria-labelledby="journal-title">
-    <div class="panel-heading"><h2 id="journal-title">단서 수첩</h2><button type="button" class="utility" id="journal-close">닫기</button></div>
-    <p class="note">단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.</p>
+    <div class="panel-heading"><h2 id="journal-title" data-text="단서 수첩">단서 수첩</h2><button type="button" class="utility" id="journal-close" data-text="닫기">닫기</button></div>
+    <p class="note" data-text="단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.">단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.</p>
+    <section class="deduction" id="deduction" aria-labelledby="deduction-title" hidden>
+      <h3 id="deduction-title" data-text="두 밤의 시계">두 밤의 시계</h3>
+      <div id="clock-evidence" class="clock-evidence"></div>
+      <fieldset>
+        <legend data-text="두 시계는 어떤 관계일까요?">두 시계는 어떤 관계일까요?</legend>
+        <div id="hypotheses" class="hypotheses"></div>
+      </fieldset>
+      <p class="note" id="hypothesis-result" aria-live="polite"></p>
+    </section>
     <ul id="clues" class="clues"></ul>
   </dialog>
 
   <dialog id="record" aria-labelledby="record-title">
-    <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close">닫기</button></div>
+    <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close" data-text="닫기">닫기</button></div>
     <p id="record-story"></p>
   </dialog>
   <noscript>이 게임을 플레이하려면 브라우저에서 자바스크립트를 사용해 주세요.</noscript>

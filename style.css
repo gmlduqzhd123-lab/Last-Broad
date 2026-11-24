@@ -174,3 +174,56 @@ noscript { display: block; margin: 20px; }
   .picture { height: 106px; }
   .scene[data-intro="true"] .context { display: none; }
 }
+
+/* Clock evidence, broadcast controls, and the loop review. */
+.deduction, .broadcast, .recap { margin-top: 12px; padding: 12px; border: 1px solid #4b655d; border-radius: 9px; background: #1c2926; }
+.deduction h3, .broadcast h3, .recap h3 { font-size: 1.02rem; color: var(--signal); }
+.clock-evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-block: 9px 11px; }
+.clock-evidence > div { display: grid; gap: 2px; padding: 8px; border: 1px solid #47635a; border-radius: 7px; background: #172421; }
+.clock-evidence span, .clock-evidence small { color: var(--muted); font-size: .81rem; line-height: 1.45; }
+.clock-evidence strong { color: var(--accent); font: 700 1.43rem/1.2 var(--mono); }
+.deduction fieldset { min-width: 0; padding: 0; margin: 0 0 8px; border: 0; }
+.deduction legend { margin-bottom: 6px; color: var(--paper); font-size: .92rem; }
+.hypotheses { display: grid; gap: 5px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hypotheses button { white-space: normal; line-height: 1.35; }
+.hypotheses button[aria-pressed="true"] { border-color: var(--signal); color: #dcffef; background: #274b3c; }
+#hypothesis-result { color: var(--accent); min-height: 2.4em; }
+.dialogue p { white-space: pre-line; }
+.broadcast { border-color: #6b7058; background: #262a22; }
+.broadcast h3 { color: var(--accent); }
+.broadcast ul { display: grid; gap: 6px; }
+.broadcast li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: baseline; padding: 8px; border: 1px solid #54614f; border-radius: 6px; background: #1d251f; font-size: .9rem; }
+.broadcast li strong { color: var(--signal); font-size: .82rem; text-align: end; }
+.broadcast[data-live="true"] li { background: #254238; border-color: #559781; }
+.meter { grid-column: 1 / -1; height: 5px; border-radius: 2px; background: #36493d; overflow: hidden; }
+.meter::after { content: ""; display: block; width: 13%; height: 100%; background: repeating-linear-gradient(90deg, #95dbb3 0 9px, #476c56 9px 11px); }
+.broadcast[data-linked="true"] .meter::after { width: 61%; }
+.broadcast[data-live="true"] .meter::after { width: 88%; }
+.recap { scroll-margin-top: 96px; }
+.recap h4 { margin: 9px 0 3px; font-size: .87rem; color: var(--accent); }
+.recap p, .recap li { font-size: .9rem; line-height: 1.46; }
+.recap li { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; white-space: pre-line; }
+.recap li time { flex-shrink: 0; color: var(--signal); font: .8rem var(--mono); }
+.quick { display: none; }
+
+@media (max-width: 680px) {
+  body.quick-active { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+  .quick-active .game { width: 100%; padding: 9px 12px 19px; overflow: auto; scroll-padding: 88px 0 14px; }
+  .quick { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 7px 12px calc(7px + env(safe-area-inset-bottom)); background: #101719; border-top: 1px solid #415255; }
+  .quick button { white-space: normal; }
+  .quick button:disabled { opacity: .55; }
+  .quick-active .narration, .quick-active .recap { scroll-margin: 0; }
+  html[lang="en"] .masthead-inner { gap: 4px 5px; }
+  html[lang="en"] .utilities { gap: 4px; }
+  html[lang="en"] .brand-mark { display: none; }
+  html[lang="en"] .brand strong { font-size: .875rem; }
+  html[lang="en"] .utility { padding-inline: 6px; font-size: .79rem; }
+  html[lang="en"] .action-head strong { font-size: .93rem; }
+  html[lang="en"] .scene-state { max-width: 46%; text-align: end; }
+  html[lang="en"] .place { word-break: normal; }
+}
+@media (max-width: 390px) {
+  .hypotheses { grid-template-columns: 1fr; }
+  html[lang="ko"] .masthead-inner .utility { padding-inline: 6px; }
+  html[lang="en"] .scene[data-intro="true"] .picture { height: 93px; }
+}
