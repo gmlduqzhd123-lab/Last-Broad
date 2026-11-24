@@ -3,74 +3,98 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0d1419">
+  <meta name="theme-color" content="#101618">
   <meta name="application-name" content="마지막 방송까지 8분">
-  <meta name="description" content="폐국을 앞둔 라디오 방송국. 같은 8분을 되감아 사라진 인터뷰를 찾으세요.">
+  <meta name="description" content="자정까지 여덟 번의 행동. 같은 밤을 되감아 한려 FM의 마지막 방송을 바꾸는 시간 루프 추리 게임.">
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css">
-  <script defer src="./game.js"></script>
+  <link rel="preload" as="image" href="./studio.webp">
+  <link rel="stylesheet" href="./style.css?v=2">
+  <script defer src="./game.js?v=2"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="shell top-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">▂▅▇▅▂</span><span>한려 FM<span class="frequency"> 89.7</span></span></div>
-      <div class="top-actions">
-        <button class="small-button" id="sound" type="button" aria-pressed="false">효과음 끔</button>
-        <button class="small-button notebook-button" id="journal-open" type="button" aria-haspopup="dialog">단서 수첩 <span id="journal-count">0</span></button>
+  <header class="masthead">
+    <div class="shell masthead-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">▂▅▇▅▂</span>
+        <span><strong>한려 FM</strong><small>89.7 MHz</small></span>
+      </div>
+      <h1>마지막 방송까지 <em>8분</em></h1>
+      <div class="utilities">
+        <button class="utility" id="sound" type="button" aria-pressed="false">소리 켜기</button>
+        <button class="utility" id="journal-open" type="button" aria-haspopup="dialog">수첩 <span id="journal-count">0</span></button>
       </div>
     </div>
   </header>
-  <main class="shell dashboard">
-    <div class="main-column">
-      <section class="hero" aria-labelledby="game-title">
-        <div class="hero-image" aria-hidden="true"></div>
-        <div class="hero-content">
-          <span class="station-state" id="station-state"><span></span> 폐국까지</span>
-          <h1 id="game-title">마지막 방송까지<br><em>8분</em></h1>
-          <p>오늘 자정, 한려 FM의 마지막 방송이 끝난다.</p>
-        </div>
-      </section>
-      <section class="room panel" aria-labelledby="room-name">
-        <div class="room-head">
-          <div>
-            <span class="section-label">현재 위치</span>
-            <h2 id="room-name">방송실</h2>
+
+  <main class="shell game">
+    <section class="hud" aria-label="현재 목표와 남은 시간">
+      <div class="mission">
+        <span class="label">현재 목표</span>
+        <strong id="objective">자정 전에 주민 인터뷰 원본을 방송한다</strong>
+      </div>
+      <div class="time">
+        <span id="clock">23:52</span>
+        <span id="budget">남은 행동 8회</span>
+        <div class="beats" id="beats" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <div class="play">
+        <section class="scene panel" aria-labelledby="room-name">
+          <div class="picture">
+            <img id="scene-image" src="./studio.webp" alt="" fetchpriority="high" width="1672" height="941">
+            <div class="scene-head">
+              <div>
+                <p class="label" id="room-floor">2층</p>
+                <h2 id="room-name">방송실</h2>
+              </div>
+              <span class="scene-state" id="room-state">방송 준비 중</span>
+            </div>
           </div>
-          <span class="clock-readout" id="clock-readout">23:52</span>
-        </div>
-        <p id="room-description" class="room-description"></p>
-        <p class="message" id="message" tabindex="-1" aria-live="polite" aria-atomic="true"></p>
-        <div id="actions" class="action-grid" aria-label="할 수 있는 행동"></div>
-      </section>
-      <section class="map panel" id="map" aria-labelledby="map-title">
-        <div class="panel-heading"><h2 id="map-title">방송국 지도</h2><span class="annotation">이동 +1분</span></div>
-        <div class="places" id="places"></div>
-      </section>
+          <div class="scene-body">
+            <div class="narration" id="narration" tabindex="-1" aria-live="polite" aria-atomic="true">
+              <p class="context" id="context"></p>
+              <div id="story"></div>
+              <p id="event" class="scene-event" hidden></p>
+            </div>
+            <div class="plan" id="plan" hidden></div>
+            <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동"></div>
+            <div id="replay" class="replay"></div>
+          </div>
+        </section>
+        <nav class="locations panel" id="locations" aria-labelledby="map-title" hidden>
+          <div class="panel-heading"><h2 id="map-title">방송국 지도</h2><span>이동 · 1행동</span></div>
+          <div id="places" class="places"></div>
+        </nav>
+      </div>
+
+      <aside class="side" aria-label="진행 기록">
+        <section class="panel side-panel">
+          <div class="panel-heading"><h2>이번 밤</h2><span class="cycle" id="cycle">1회차</span></div>
+          <ol id="timeline" class="timeline"></ol>
+          <p class="note">이동하거나 조사할 때 1분이 흐릅니다.</p>
+        </section>
+        <section class="panel side-panel">
+          <div class="panel-heading"><h2>결말 기록</h2><span id="ending-count">0 / 3</span></div>
+          <ul id="ending-list" class="endings"></ul>
+        </section>
+        <button class="utility rewind" id="rewind" type="button" hidden>이번 밤 되감기</button>
+      </aside>
     </div>
-    <aside class="sidebar" aria-label="진행 상황">
-      <section class="timer panel" aria-labelledby="time-title">
-        <div class="panel-heading"><h2 id="time-title">남은 시간</h2><span class="loop" id="loop"></span></div>
-        <div class="timer-display" id="timer-display" aria-hidden="true">08<span>:</span>00</div>
-        <div class="minute-track" id="minute-track" aria-label="남은 시간 8분"></div>
-        <p>한 번 움직일 때마다 1분이 지나갑니다.</p>
-      </section>
-      <section class="journal-inline panel" aria-labelledby="journal-title">
-        <div class="panel-heading"><h2 id="journal-title">단서 수첩</h2><span id="clue-count" class="score">0 / 6</span></div>
-        <ul id="clue-list" class="clue-list"></ul>
-        <p class="annotation">시간을 되감아도 발견한 단서는 남습니다.</p>
-      </section>
-      <section class="endings panel" aria-labelledby="ending-title">
-        <div class="panel-heading"><h2 id="ending-title">결말 기록</h2><span id="ending-count" class="score">0 / 3</span></div>
-        <ul id="ending-list"></ul>
-      </section>
-      <button class="rewind" id="rewind" type="button">↶ 8분 전으로 되감기</button>
-    </aside>
   </main>
-  <dialog id="journal-dialog" aria-labelledby="dialog-title">
-    <div class="panel-heading"><h2 id="dialog-title">단서 수첩</h2><button type="button" class="small-button" id="journal-close">닫기</button></div>
-    <ul id="dialog-clues" class="clue-list"></ul>
-    <p class="annotation">수첩을 읽는 동안 시간은 그대로입니다.</p>
+
+  <dialog id="journal" aria-labelledby="journal-title">
+    <div class="panel-heading"><h2 id="journal-title">단서 수첩</h2><button type="button" class="utility" id="journal-close">닫기</button></div>
+    <p class="note">단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.</p>
+    <ul id="clues" class="clues"></ul>
   </dialog>
+
+  <dialog id="record" aria-labelledby="record-title">
+    <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close">닫기</button></div>
+    <p id="record-story"></p>
+  </dialog>
+  <noscript>이 게임을 플레이하려면 브라우저에서 자바스크립트를 사용해 주세요.</noscript>
 </body>
 </html>
