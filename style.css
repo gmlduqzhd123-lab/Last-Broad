@@ -223,6 +223,7 @@ noscript { display: block; margin: 20px; }
 .share-field input { width: 100%; padding: 8px; border: 1px solid #536965; border-radius: 6px; background: #121c1b; color: var(--paper); font: inherit; }
 .share-tools { display: flex; flex-wrap: wrap; gap: 6px; }
 .share-tools a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; background: #192324; }
 
 @media (max-width: 680px) {
   body.quick-active { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
