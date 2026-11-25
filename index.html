@@ -6,12 +6,20 @@
   <meta name="theme-color" content="#101618">
   <meta name="application-name" content="마지막 방송까지 8분">
   <meta name="description" content="자정까지 여덟 번의 행동. 같은 밤을 되감아 한려 FM의 마지막 방송을 바꾸는 시간 루프 추리 게임.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="마지막 방송까지 8분">
+  <meta property="og:description" content="같은 목소리가 두 곳에서 들린다. 자정까지 여덟 번의 행동으로 마지막 방송을 바꿔라.">
+  <meta property="og:image" content="https://eight-minutes-to-air.asdad123asd.chatgpt.site/media/share-ko.jpg">
+  <meta property="og:image:alt" content="한려 FM의 밤. 비 내리는 항구를 바라보는 방송실.">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="data:,">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=3">
-  <script defer src="./locale.js?v=3"></script>
-  <script defer src="./game.js?v=3"></script>
+  <link rel="stylesheet" href="./style.css?v=4">
+  <script defer src="./locale.js?v=4"></script>
+  <script defer src="./game.js?v=4"></script>
 </head>
 <body>
   <header class="masthead">
@@ -64,6 +72,7 @@
             <div class="plan" id="plan" hidden></div>
             <section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
               <div class="panel-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
+              <p id="sync-cue" class="sync-cue" hidden></p>
               <ul id="broadcast-channels"></ul>
             </section>
             <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
@@ -96,6 +105,7 @@
           <ul id="ending-list" class="endings"></ul>
         </section>
         <button class="utility rewind" id="rewind" type="button" data-text="되감기 검토" hidden>되감기 검토</button>
+        <button class="utility share-open" id="share-open" type="button" data-text="소개 영상 · 공유" aria-haspopup="dialog">소개 영상 · 공유</button>
       </aside>
     </div>
   </main>
@@ -110,12 +120,17 @@
     <p class="note" data-text="단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.">단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.</p>
     <section class="deduction" id="deduction" aria-labelledby="deduction-title" hidden>
       <h3 id="deduction-title" data-text="두 밤의 시계">두 밤의 시계</h3>
+      <p class="note evidence-instruction" data-text="두 기록에서 같은 사건을 하나씩 골라 연결하세요.">두 기록에서 같은 사건을 하나씩 골라 연결하세요.</p>
       <div id="clock-evidence" class="clock-evidence"></div>
-      <fieldset>
-        <legend data-text="두 시계는 어떤 관계일까요?">두 시계는 어떤 관계일까요?</legend>
-        <div id="hypotheses" class="hypotheses"></div>
-      </fieldset>
-      <p class="note" id="hypothesis-result" aria-live="polite"></p>
+      <button type="button" class="utility" id="pair-evidence" data-text="선택한 두 기록 연결">선택한 두 기록 연결</button>
+      <p class="note" id="pair-result" aria-live="polite"></p>
+      <div id="hypothesis-stage" hidden>
+        <fieldset>
+          <legend data-text="두 시계는 어떤 관계일까요?">두 시계는 어떤 관계일까요?</legend>
+          <div id="hypotheses" class="hypotheses"></div>
+        </fieldset>
+        <p class="note" id="hypothesis-result" aria-live="polite"></p>
+      </div>
     </section>
     <ul id="clues" class="clues"></ul>
   </dialog>
@@ -123,6 +138,17 @@
   <dialog id="record" aria-labelledby="record-title">
     <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close" data-text="닫기">닫기</button></div>
     <p id="record-story"></p>
+  </dialog>
+  <dialog id="share" aria-labelledby="share-title">
+    <div class="panel-heading"><h2 id="share-title" data-text="소개 영상 · 공유">소개 영상 · 공유</h2><button type="button" class="utility" id="share-close" data-text="닫기">닫기</button></div>
+    <video id="intro-video" controls playsinline preload="none" data-label="스포일러 없는 15초 소개 영상" aria-label="스포일러 없는 15초 소개 영상"></video>
+    <p class="note" data-text="결말을 드러내지 않는 소개 영상과 공유 카드입니다.">결말을 드러내지 않는 소개 영상과 공유 카드입니다.</p>
+    <label class="share-field"><span data-text="플레이 링크">플레이 링크</span><input id="share-url" type="url" readonly></label>
+    <div class="share-tools">
+      <button type="button" class="utility" id="copy-link" data-text="링크 복사">링크 복사</button>
+      <a class="utility" id="download-card" download data-text="공유 카드 받기">공유 카드 받기</a>
+    </div>
+    <p class="note" id="share-result" aria-live="polite"></p>
   </dialog>
   <noscript>이 게임을 플레이하려면 브라우저에서 자바스크립트를 사용해 주세요.</noscript>
 </body>

@@ -10,14 +10,21 @@ const hypotheses = {
   slower: { label: '건너편이 1분 느리다', local: 7 },
   faster: { label: '건너편이 1분 빠르다', local: 5 },
 };
+const evidence = {
+  localBell: { clue: 'bell', side: 'local', event: 'bell', time: '23:54', label: '복도 현관 종', detail: '높은 종 · 낮은 종' },
+  localOpening: { clue: 'onAir', side: 'local', event: 'onAir', time: '23:55', label: '방송실 오프닝', detail: '“비 오는 항구의 밤입니다.”' },
+  remoteOpening: { clue: 'airlog', side: 'remote', event: 'onAir', time: '23:56', label: '건너편 방송 일지', detail: '“비 오는 항구의 밤입니다.”' },
+  remoteBell: { clue: 'relay', side: 'remote', event: 'bell', time: '23:55', label: '건너편 수신 녹음', detail: '높은 종 · 낮은 종' },
+};
 const voices = {
   opening: './audio/opening.wav',
   call: './audio/call.wav',
   delivery: './audio/delivery.wav',
   distantBell: './audio/distant-bell.wav',
-  voices: './audio/ending-voices.wav',
+  onAir: './audio/harbor-opening.wav',
+  voices: './audio/sunim.wav',
   signal: './audio/ending-signal.wav',
-  both: './audio/ending-both.wav',
+  both: './audio/two-nights.wav',
 };
 const rooms = {
   studio: { name: '방송실', floor: '2층', art: './studio.webp', arrival: '진행자 윤서가 콘솔 너머로 고개를 든다. 부두의 불빛이 창에 비친다.' },
@@ -39,16 +46,19 @@ const clues = {
   label: { title: '파란 스티커', fact: '‘빈 상자’ 라벨 아래에 미라가 붙인 파란 스티커가 있다. 주민 인터뷰 원본이 그 안에 들어 있었다.', question: '라벨이 틀렸다는 걸 더 일찍 알려 주면?' },
   routing: { title: '두 곳에서 하는 일', fact: '연결표에는 두 사람이 표시돼 있다. 방송실에서 테이프를 큐에 올리고, 옥상에서 수신 채널을 열어야 한다.', question: '두 곳의 작업을 같은 시간에 맡길 방법은?' },
   relay: { title: '건너편 수신 기록', fact: '건너편 시계 23:55. 높은 종소리 뒤에 낮은 종소리가 들어 있다. 다음 교신은 건너편 시계 23:58에 열린다.', question: '이쪽 시계로는 몇 시에 보조 채널을 열어야 할까?', clip: 'distantBell' },
+  onAir: { title: '윤서의 오프닝', fact: '이쪽 시계 23:55. 윤서가 “비 오는 항구의 밤입니다”라고 방송을 시작했다.', question: '건너편 방송 일지에는 이 멘트가 언제 찍혔을까?', clip: 'onAir' },
+  airlog: { title: '건너편 방송 일지', fact: '자료실의 자동 수신 일지에 “비 오는 항구의 밤입니다”가 건너편 시계 23:56으로 기록돼 있다.', question: '종소리에서 찾은 시차와도 일치할까?', clip: 'onAir' },
+  sunim: { title: '순임이 남긴 부탁', fact: '테이프에 순임의 메모가 붙어 있다. 아버지는 큰비가 온 밤마다 라디오로 귀항 소식을 확인하며 부두에서 기다렸다.', question: '순임은 마지막 방송을 누가 듣길 바랐을까?' },
 };
 const callWords = '“여기는 한려 FM. 아직 듣고 있는 사람 있나요?”';
 
 const endings = {
   voices: {
     title: '마을의 목소리',
-    story: '“처음 이 동네에 온 날이요? 바다가 집 안에서도 들렸죠.” 주민들의 웃음이 부두까지 번진다. 어선 한 척이 기적으로 화답한다. 그사이 수신기 너머에서 윤서가 마지막으로 누군가 듣고 있느냐고 묻는다.',
+    story: '순임은 아버지가 비 오는 부두에서 라디오에 귀를 기울이던 밤을 이야기한다. 이제 그 목소리가 같은 부두에 닿는다. 배 한 척이 짧게 기적을 울린다. 건너편 윤서의 호출은 끝내 응답을 얻지 못한다.',
     follow: '다음 밤에는 옥상 수신 기록을 찾아보세요. 건너편 윤서는 몇 시에 다시 부를까요?',
     clip: 'voices',
-    transcript: '“처음 이 동네에 온 날이요? 창문을 열어 둔 줄 알았어요. 바다가 집 안에서도 들렸거든요.”',
+    transcript: '“아버지는 큰비가 오면 부두에 나와 이 방송을 들었어요. 아버지, 저 돌아왔어요.”',
   },
   signal: {
     title: '건너편의 응답',
@@ -59,23 +69,23 @@ const endings = {
   },
   both: {
     title: '두 밤의 방송',
-    story: '옥상에서 신호를 보내자 윤서가 방송실에서 재호의 테이프를 돌린다. 어부의 목소리 사이로 건너편 윤서가 인사한다. “한려 FM입니다. 우리 쪽에서도 잘 들려요.” 이쪽 윤서는 마이크를 켜고, 같은 인사를 건넨다. 두 시계가 함께 자정을 지난다.',
+    story: '옥상의 교신과 방송실의 테이프가 같은 순간에 열린다. 순임의 목소리가 두 밤의 항구에 번지고, 건너편 윤서가 답한다. 마침내 두 방송실에서 같은 이야기를 듣는다.',
     follow: '같은 밤을 다시 돌려 다른 선택이 남긴 방송도 들어 볼 수 있습니다.',
     clip: 'both',
-    transcript: '“한려 FM입니다. 우리 쪽에서도 잘 들려요.”\n“여기도 한려 FM입니다. 마을의 마지막 이야기를 함께 듣겠습니다.”',
+    transcript: '“아버지, 저 돌아왔어요.”\n“한려 FM입니다. 우리 쪽 항구에도 그 목소리가 닿았어요.”',
   },
 };
 
 const newRun = () => ({
   elapsed: 0, room: 'studio', phase: 'play', message: '', speaker: '', event: '', clip: '',
   tape: '', courier: false, dj: false, tuneAt: 0, linked: false, used: [], ending: '',
-  review: false, console: '', consoleReady: false, log: [],
+  review: false, console: '', consoleReady: false, syncMissed: false, log: [],
 });
 
 function loadGame() {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 3, loop: 1, known: ['echo'], unlocked: [], sound: false,
-    language: requested === 'en' ? 'en' : 'ko', hypothesis: '', run: newRun() };
+  const fresh = { version: 4, loop: 1, known: ['echo'], unlocked: [], sound: false,
+    language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], run: newRun() };
   try {
     const old = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!old || !Array.isArray(old.known) || !Array.isArray(old.unlocked)) return fresh;
@@ -85,6 +95,7 @@ function loadGame() {
     fresh.sound = Boolean(old.sound);
     if (!requested && old.language === 'en') fresh.language = 'en';
     if (Object.hasOwn(hypotheses, old.hypothesis)) fresh.hypothesis = old.hypothesis;
+    if (Array.isArray(old.matches)) fresh.matches = [...new Set(old.matches.filter((id) => ['bell', 'onAir'].includes(id)))];
     const previous = old.run;
     if (old.version >= 2 && previous && Object.hasOwn(rooms, previous.room)
       && Number.isInteger(previous.elapsed) && previous.elapsed >= 0 && previous.elapsed <= LIMIT
@@ -98,7 +109,10 @@ function loadGame() {
         fresh.run.event = '';
         fresh.run.clip = '';
       }
-      if (previous.phase === 'ending') fresh.run.clip = endings[previous.ending].clip;
+      if (previous.phase === 'ending') {
+        fresh.run.clip = endings[previous.ending].clip;
+        fresh.run.message = endings[previous.ending].story;
+      }
     }
     if (!old.version && previous?.elapsed > 0) {
       fresh.run.message = '새로운 방송 회차가 시작됩니다. 이전 단서와 결말 기록을 이어받았습니다.';
@@ -199,7 +213,9 @@ function onMinute() {
     cue = 'bell';
   }
   if (r.elapsed === 3) {
-    events.push('방송실의 붉은 불이 켜진다. 윤서가 오프닝을 시작한다.');
+    learn('onAir');
+    events.push('방송실의 붉은 불이 켜진다. 윤서 “비 오는 항구의 밤입니다.”');
+    r.clip = 'onAir';
   }
   if (r.elapsed === CART_LEAVES) {
     learn('departure');
@@ -218,6 +234,10 @@ function onMinute() {
       events.push(callWords);
       r.clip ||= 'call';
     }
+  }
+  if (r.elapsed === REPLY_WINDOW + 1 && r.linked && r.dj && r.tape === 'delivered' && !r.consoleReady) {
+    r.syncMissed = true;
+    events.push('동시 송출 신호를 보낼 순간이 지났다. 열린 교신에 답할 시간은 남아 있다.');
   }
   if (r.elapsed === LIMIT) {
     r.phase = 'expired';
@@ -315,7 +335,7 @@ function consoleActions() {
   const r = game.run;
   const actions = [];
   if (r.console === 'both' && !r.consoleReady) {
-    actions.push({ title: '두 채널 연결하기', detail: '옥상 보조 신호를 방송실 재생기와 연결합니다.', cost: '1행동', primary: true, run: () => {
+    actions.push({ title: '동시 송출 신호 보내기', detail: '원본 전달과 교신이 겹친 지금, 윤서에게 재생 큐를 보냅니다.', cost: '1행동', primary: true, run: () => {
       r.consoleReady = true;
       update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', true));
       focusConsoleControl();
@@ -357,14 +377,14 @@ function choices() {
   };
   const finalChoice = (id, title, detail, primary) =>
     offer(id, title, detail, () => openConsole(id), primary, '콘솔 열기');
-  const canJoin = r.dj && r.tape === 'delivered' && r.linked && LIMIT - r.elapsed >= 2;
+  const canJoin = r.dj && r.tape === 'delivered' && r.linked && r.elapsed === REPLY_WINDOW;
 
   if (r.room === 'studio') {
     if (r.elapsed <= 1) {
       offer('go-hall', '복도로 가서 수레 확인', '운반 상자에 원본이 섞였을지도 모릅니다.', () => enter('hall'), true);
     }
     scene('ask-dj', '윤서에게 목소리 확인', '눈앞의 윤서도 방금 그 소리를 들었을까요?', 'rundown',
-      '“저도 들었어요. 그런데 저한텐 아직 마지막 순서가 남아 있어요. 미라 씨의 원본이 돌아오면 바로 틀게요.”', '윤서');
+      '“저도 들었어요. 여기선 아직 순임 씨의 인터뷰 순서가 남았어요. 아버지가 기다리던 부두에 자기 목소리를 전하고 싶대요.”', '윤서');
     if (knows('routing')) {
       scene('assign-dj', '윤서에게 방송실 맡기기', '테이프가 도착하면 보내 줄 사람이 필요합니다.', null,
         '“좋아요. 원본이 들어오면 제가 준비해 둘게요. 당신이 옥상에서 신호를 주면 돼요.”', '윤서', r.elapsed === 0 && game.loop > 1,
@@ -381,8 +401,8 @@ function choices() {
   if (r.room === 'hall') {
     if (cartHere(r.elapsed) && !r.tape && !r.courier) {
       scene('search-cart', '수레의 상자 확인', '‘빈 상자’ 라벨 밑으로 파란 스티커가 보입니다.', 'label',
-        '라벨을 들추자 파란 스티커가 붙은 테이프가 나온다. 손글씨로 ‘주민 인터뷰 원본’이라고 적혀 있다.', '', !knows('label'),
-        () => { r.tape = 'carried'; });
+        '파란 스티커 아래 주민 인터뷰 원본이 있다. 순임의 메모가 붙어 있다. “아버지가 기다리던 부두에 제 목소리를 들려주세요.”', '', !knows('label'),
+        () => { r.tape = 'carried'; learn('sunim'); });
     }
     if (knows('label') && r.elapsed < CART_LEAVES) {
       scene('assign-courier', '재호에게 원본 운반 부탁', '파란 스티커를 알려 주고 23:57에 윤서에게 전달하게 합니다.', null,
@@ -402,15 +422,17 @@ function choices() {
       '“테이프 상자엔 파란 스티커를 붙였어요. 겉에 뭐라고 적혔든 스티커를 봐요. 바깥으로 가져갈 짐은 전부 복도에 모였고요.”', '미라');
     scene('read-routing', '두 채널 연결표 펼치기', '방송실과 옥상에서 어떤 일을 할 수 있는지 확인합니다.', 'routing',
       '연결표 위에 두 사람이 그려져 있다. 한 명은 방송실의 재생기, 한 명은 옥상의 송신기에 손을 올리고 있다.', '', true);
+    scene('read-airlog', '건너편 방송 일지 읽기', '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
+      '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”');
   }
 
   if (r.room === 'roof') {
     scene('inspect-relay', '건너편 수신 기록 조사', '같은 주파수에서 잡힌 녹음과 시각을 확인합니다.', 'relay',
       '녹음에는 높은 종소리 뒤 낮은 종소리가 이어진다. 건너편 시각은 23:55. 녹음 끝에 다음 교신 시각이 남아 있다. 건너편 23:58.', '', !knows('relay'));
-    if (knows('bell') && knows('relay') && !r.tuneAt) {
-      const hypothesis = hypotheses[game.hypothesis];
+    if (knows('relay') && !r.tuneAt) {
+      const hypothesis = game.matches.length ? hypotheses[game.hypothesis] : null;
       if (!hypothesis) {
-        offer('compare', '수첩에서 두 시계 비교', '같은 종소리가 기록된 두 시각을 대조합니다.', openJournal, true, '시간 유지');
+        offer('compare', '수첩에서 증거 연결하기', '두 시계에서 같은 사건을 찾고 시차 가설을 세웁니다.', openJournal, true, '시간 유지');
       } else if (r.elapsed < hypothesis.local) {
         scene('enable-relay', '보조 채널 예약하기', fmt('이쪽 시계 {0}에 연결을 시도합니다.', time(hypothesis.local)), null,
           '채널을 예약했다. 송신기가 그 시각에 건너편 주파수를 찾는다.', '', true,
@@ -459,12 +481,12 @@ function objective() {
   if (r.console && r.phase === 'play') return '송출 콘솔에서 마지막 방송을 준비한다';
   if (r.phase === 'expired') return '23:52로 돌아가 다음 시도를 시작한다';
   if (r.phase === 'ending') return '오늘 밤의 방송이 끝났다';
-  if (r.dj && r.courier) return r.linked && r.tape === 'delivered'
-    ? '두 방송을 함께 송출한다' : '옥상에서 두 시계를 비교해 교신을 예약한다';
+  if (r.dj && r.courier && !r.syncMissed) return r.linked && r.tape === 'delivered'
+    ? '지금 윤서에게 동시 송출 신호를 보낸다' : '옥상에서 두 시계를 비교해 교신을 예약한다';
   if (r.tape && r.room !== 'roof') return '방송실에서 주민 인터뷰를 송출한다';
   if (r.linked) return '건너편 호출에 응답한다';
   if (r.room === 'roof' && r.tuneAt > r.elapsed) return '예약한 시각까지 교신을 기다린다';
-  if (r.room === 'roof' && knows('relay') && knows('bell')) return '수첩의 두 시계를 비교해 교신을 예약한다';
+  if (r.room === 'roof' && knows('relay') && !r.tuneAt) return '수첩에서 같은 사건의 기록을 연결한다';
   if (r.room === 'hall' && r.elapsed >= CART_LEAVES && !r.tape) return '다음 회차에 수레를 붙잡을 방법을 찾는다';
   return '자정 전에 주민 인터뷰 원본을 방송한다';
 }
@@ -541,6 +563,7 @@ function renderScene() {
   $('event').textContent = t(r.event);
   const clip = intro ? 'opening' : r.clip;
   const replayLabels = { opening: '첫 교신 듣기', delivery: '재호의 무전 듣기', call: '건너편 호출 듣기' };
+  replayLabels.onAir = '오프닝 다시 듣기';
   $('replay').replaceChildren(...(clip ? [listenButton(clip, replayLabels[clip] ?? '마지막 송출 다시 듣기')] : []));
   const plan = nextPlan();
   $('plan').hidden = !plan || r.phase !== 'play' || r.review;
@@ -555,10 +578,12 @@ function renderBroadcast() {
   $('broadcast').dataset.live = String(onAir);
   $('broadcast').dataset.linked = String(r.consoleReady);
   $('broadcast-state').textContent = t(onAir ? '송출 완료' : r.consoleReady ? '두 채널 연결됨' : '송출 대기');
+  $('sync-cue').hidden = r.console !== 'both' || onAir || r.consoleReady;
+  $('sync-cue').textContent = t('23:57 · 원본 전달 완료 · 건너편 교신 연결');
   const channels = {
-    voices: [['주민 인터뷰', r.tape ? '테이프 장착' : '테이프 대기']],
-    signal: [['건너편 수신기', '교신 연결'], ['내 마이크', '마이크 대기']],
-    both: [['방송실 재생기', '테이프 장착'], ['건너편 수신기', r.consoleReady ? '두 채널 연결됨' : '채널 연결 대기']],
+    voices: [['순임의 인터뷰', r.tape ? '테이프 장착' : '테이프 대기']],
+    signal: [['건너편 윤서', '교신 연결'], ['내 마이크', '마이크 대기']],
+    both: [['순임의 테이프', '테이프 장착'], ['건너편 윤서', r.consoleReady ? '두 채널 연결됨' : '채널 연결 대기']],
   }[r.console];
   $('broadcast-channels').replaceChildren(...channels.map(([name, state]) => {
     const line = element('li');
@@ -585,12 +610,15 @@ function renderRecap() {
   if (r.ending === 'voices') missed = '주민 인터뷰는 전했지만 건너편 호출에는 응답하지 못했습니다.';
   else if (r.ending === 'signal') missed = '건너편에 닿았지만 이번 방송에는 주민 인터뷰가 빠졌습니다.';
   else if (r.ending === 'both') missed = '원본과 건너편 목소리가 모두 방송되었습니다.';
+  else if (r.syncMissed) missed = '원본 전달과 교신이 겹친 순간에 윤서에게 신호를 보내지 못했습니다.';
   else if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) missed = '예약한 시각에 건너편 채널이 닫혀 있었습니다.';
   else if (!r.tape && r.elapsed >= CART_LEAVES) missed = '23:57에 수레가 떠나 원본을 확보하지 못했습니다.';
   else if (r.phase === 'expired') missed = '자정까지 준비한 방송을 송출하지 못했습니다.';
   $('missed').textContent = t(missed);
   let next = '남은 시간에는 어떤 단서를 확인할 수 있을까요?';
-  if (r.courier && r.dj && r.phase === 'expired') next = '두 곳의 준비를 마친 뒤 콘솔에 몇 행동을 남겨야 할까요?';
+  if (r.syncMissed) next = '원본 전달과 건너편 교신이 같은 시각에 오면 무엇을 먼저 해야 할까요?';
+  else if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) next = '종소리와 방송 오프닝에서 찾은 시차가 같은가요? 자료실 방송 일지에서 확인할 수 있습니다.';
+  else if (r.courier && r.dj && r.phase === 'expired') next = '두 곳의 준비를 마친 뒤 콘솔에 몇 행동을 남겨야 할까요?';
   else if (r.ending === 'signal') next = '당신이 옥상에 있는 동안 누가 원본을 방송실로 옮길 수 있을까요?';
   else if (r.ending === 'both') next = '다른 선택을 했다면 어떤 목소리가 방송에 남을까요?';
   else if (knows('relay')) next = '같은 종소리가 두 시계에 몇 시로 기록되어 있나요?';
@@ -688,16 +716,44 @@ function render() {
   }));
 }
 
+let selectedEvidence = {};
+let pairFeedback = '';
+
 function renderDeduction() {
-  $('deduction').hidden = !knows('bell') || !knows('relay');
+  const discovered = Object.entries(evidence).filter(([, item]) => knows(item.clue));
+  $('deduction').hidden = !discovered.length;
   if ($('deduction').hidden) return;
-  $('clock-evidence').replaceChildren(...[
-    ['이쪽 · 복도', '23:54'], ['건너편 · 수신 기록', '23:55'],
-  ].map(([label, stamp]) => {
-    const card = element('div');
-    card.append(element('span', label), element('strong', stamp), element('small', '높은 종 · 낮은 종'));
-    return card;
+  $('clock-evidence').replaceChildren(...Object.entries({ local: '이쪽 시계', remote: '건너편 시계' }).map(([side, title]) => {
+    const column = element('div', '', 'evidence-column');
+    column.append(element('h4', title));
+    const available = discovered.filter(([, item]) => item.side === side);
+    if (!available.length) column.append(element('p', '아직 발견한 기록이 없습니다.', 'note'));
+    for (const [id, item] of available) {
+      const paired = game.matches.includes(item.event);
+      const card = element('button', '', 'evidence-card');
+      card.type = 'button';
+      card.dataset.evidence = id;
+      card.disabled = paired;
+      card.setAttribute('aria-pressed', String(selectedEvidence[side] === id));
+      card.append(element('span', item.label), element('strong', item.time), element('small', item.detail));
+      if (paired) card.append(element('small', '연결됨', 'paired'));
+      card.addEventListener('click', () => {
+        selectedEvidence[side] = selectedEvidence[side] === id ? '' : id;
+        pairFeedback = '';
+        renderDeduction();
+        $('clock-evidence').querySelector('[data-evidence="' + id + '"]').focus();
+      });
+      column.append(card);
+    }
+    return column;
   }));
+  $('pair-evidence').disabled = !selectedEvidence.local || !selectedEvidence.remote;
+  $('pair-result').textContent = t(pairFeedback || (game.matches.length === 2
+    ? '두 사건 모두 같은 시차를 보여 줍니다.'
+    : game.matches.length ? '연결한 기록의 시각으로 가설을 세우세요. 다른 사건으로도 확인할 수 있습니다.' : ''));
+  $('hypothesis-stage').hidden = !game.matches.length;
+  if (!game.matches.length) return;
+
   $('hypotheses').replaceChildren(...Object.entries(hypotheses).map(([id, hypothesis]) => {
     const button = element('button', hypothesis.label, 'utility');
     button.type = 'button';
@@ -714,23 +770,81 @@ function renderDeduction() {
   }));
   $('hypothesis-result').textContent = game.hypothesis
     ? fmt('가설대로라면 건너편 23:58은 이쪽 {0}입니다. 옥상 송신기에서 시험하세요.', time(hypotheses[game.hypothesis].local))
-    : t('건너편의 다음 교신은 23:58입니다. 두 종소리를 근거로 가설을 고르세요.');
+    : t('건너편의 다음 교신은 23:58입니다. 연결한 기록을 근거로 가설을 고르세요.');
+}
+
+function pairEvidence() {
+  const local = evidence[selectedEvidence.local];
+  const remote = evidence[selectedEvidence.remote];
+  if (!local || !remote) return;
+  if (local.event !== remote.event) {
+    pairFeedback = '서로 다른 사건입니다. 소리나 멘트가 일치하는 기록을 골라 보세요.';
+    renderDeduction();
+    return;
+  }
+  if (!game.matches.includes(local.event)) game.matches.push(local.event);
+  selectedEvidence = {};
+  pairFeedback = local.event === 'bell' ? '두 종소리를 같은 사건으로 연결했습니다.' : '두 방송 오프닝을 같은 사건으로 연결했습니다.';
+  if (game.matches.length === 2) pairFeedback += '\n두 사건 모두 같은 시차를 보여 줍니다.';
+  save();
+  render();
+  renderDeduction();
+  $('hypotheses').querySelector('[aria-pressed="true"], button').focus();
 }
 
 function openJournal() {
+  selectedEvidence = {};
+  pairFeedback = '';
   renderDeduction();
   $('clues').replaceChildren(...game.known.map((id) => {
     const { title, fact, question, clip } = clues[id];
     const item = element('li');
     item.append(element('h3', title), element('p', fact), element('p', question, 'question'));
     if (clip) {
-      item.append(listenButton(clip, clip === 'opening' ? '첫 교신 다시 듣기' : '기록된 종소리 듣기'));
+      const labels = { opening: '첫 교신 다시 듣기', distantBell: '기록된 종소리 듣기', onAir: '오프닝 다시 듣기' };
+      item.append(listenButton(clip, labels[clip]));
     }
     return item;
   }));
   $('journal').showModal();
 }
 
+const shareMedia = {
+  ko: { poster: './media/share-ko.jpg', video: './media/intro-ko.mp4' },
+  en: { poster: './media/share-en.jpg', video: './media/intro-en.mp4' },
+};
+
+function openShare() {
+  const language = game.language;
+  const media = shareMedia[language];
+  const target = new URL(language === 'en' ? '/en/' : '/?lang=ko', 'https://eight-minutes-to-air.asdad123asd.chatgpt.site/');
+  $('share-url').value = target.href;
+  $('share-result').textContent = '';
+  $('download-card').href = media.poster;
+  $('download-card').download = '8-minutes-to-air-' + language + '.jpg';
+  const video = $('intro-video');
+  video.poster = media.poster;
+  const videoSource = location.hostname === target.hostname
+    ? new URL(media.video, 'https://gmlduqzhd123-lab.github.io/Last-Broad/').href : media.video;
+  if (video.getAttribute('src') !== videoSource) video.setAttribute('src', videoSource);
+  $('share').showModal();
+}
+
+$('pair-evidence').addEventListener('click', pairEvidence);
+$('share-open').addEventListener('click', openShare);
+$('share-close').addEventListener('click', () => $('share').close());
+$('share').addEventListener('close', () => $('intro-video').pause());
+$('copy-link').addEventListener('click', async () => {
+  const field = $('share-url');
+  try {
+    await navigator.clipboard.writeText(field.value);
+    $('share-result').textContent = t('플레이 링크를 복사했습니다.');
+  } catch {
+    field.focus();
+    field.select();
+    $('share-result').textContent = t('선택된 링크를 복사해 주세요.');
+  }
+});
 $('journal-open').addEventListener('click', openJournal);
 $('quick-journal').addEventListener('click', openJournal);
 $('quick-review').addEventListener('click', reviewNight);
