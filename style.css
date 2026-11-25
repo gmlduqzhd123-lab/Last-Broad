@@ -269,3 +269,16 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
   html[lang="ko"] .masthead-inner .utility { padding-inline: 6px; }
   html[lang="en"] .scene[data-intro="true"] .picture { height: 93px; }
 }
+
+/* 엽쌤 공통: 설치·QR 버튼, 하단 문구 */
+.ys-credit { margin: 18px 0 8px; text-align: center; font-size: .78rem; color: #9fb0b2; }
+.ys-credit a { color: inherit; }
+@media (max-width: 680px) {
+  .ys-wide { display: none; }
+  .masthead-inner .utilities { gap: 4px; }
+  .masthead-inner .utility { padding-inline: 6px; }
+}
+@media (max-width: 400px) {
+  .brand-mark { display: none; }
+  .masthead-inner .utility { padding-inline: 5px; font-size: .78rem; }
+}
