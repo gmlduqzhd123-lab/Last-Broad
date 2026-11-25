@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=5">
-  <script defer src="./locale.js?v=5"></script>
-  <script defer src="./game.js?v=5"></script>
+  <link rel="stylesheet" href="./style.css?v=6">
+  <script defer src="./locale.js?v=6"></script>
+  <script defer src="./game.js?v=6"></script>
 </head>
 <body>
   <header class="masthead">
@@ -80,6 +80,40 @@
               <div id="story"></div>
               <p id="event" class="scene-event" hidden></p>
             </div>
+            <section class="receiver" id="receiver" aria-labelledby="receiver-title" hidden>
+              <details id="receiver-panel">
+                <summary class="panel-heading">
+                  <h3 id="receiver-title" data-text="탁상 수신기">탁상 수신기</h3>
+                  <span id="receiver-toggle" data-text="다이얼 조작">다이얼 조작</span><span id="receiver-lock"></span>
+                </summary>
+                <div class="receiver-controls">
+                  <input id="receiver-dial" type="range" min="0" max="2" step="1" value="0" aria-label="수신 주파수" data-label="수신 주파수" aria-describedby="receiver-help">
+                  <div class="receiver-bands" aria-hidden="true">
+                    <span data-text="한려 FM">한려 FM</span><span data-text="직원 무전">직원 무전</span><span data-text="미확인 신호">미확인 신호</span>
+                  </div>
+                  <p class="receiver-help" id="receiver-help" data-text="다이얼을 움직여 신호를 찾으세요. 게임 속 시간은 그대로입니다.">다이얼을 움직여 신호를 찾으세요. 게임 속 시간은 그대로입니다.</p>
+                  <div class="receiver-screen" role="status">
+                    <span class="signal-bars" id="receiver-wave" aria-hidden="true"></span>
+                    <p id="receiver-caption"></p>
+                  </div>
+                  <button class="utility receiver-replay" id="receiver-replay" type="button" data-text="미확인 신호 다시 듣기" hidden>미확인 신호 다시 듣기</button>
+                </div>
+              </details>
+            </section>
+            <section class="transmission" id="transmission" aria-labelledby="transmission-title" hidden>
+              <div class="transmission-stage">
+                <img id="transmission-image" src="./studio.webp" alt="" width="1000" height="563">
+                <div class="transmission-display">
+                  <div class="panel-heading"><h3 id="transmission-title" tabindex="-1"></h3><span class="on-air">ON AIR</span></div>
+                  <div class="transmission-channel">
+                    <span class="reel" aria-hidden="true"></span><span id="tape-wave" class="signal-bars" aria-hidden="true"></span>
+                    <span id="remote-wave" class="signal-bars" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </div>
+              <p id="transmission-caption" role="status"></p>
+              <button class="utility" id="transmission-skip" type="button" data-text="결말 보기">결말 보기</button>
+            </section>
             <div class="plan" id="plan" hidden></div>
             <section class="readiness" id="roof-reservation" aria-labelledby="roof-reservation-title" hidden>
               <h3 id="roof-reservation-title" data-text="옥상 송신기 예약">옥상 송신기 예약</h3>
