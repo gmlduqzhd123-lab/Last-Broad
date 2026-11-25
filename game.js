@@ -573,7 +573,7 @@ function stopAmbience() {
 
 function syncAmbience() {
   const r = game.run;
-  const blockingDialog = document.querySelector('dialog[open]:not(#settings):not(#pier)');
+  const blockingDialog = document.querySelector('dialog[open]:not(#settings):not(#pier):not(#places-dialog)');
   const room = $('pier').open ? 'pier' : r.phase === 'play' && !r.review && r.room;
   const next = game.sound && game.mix.ambience > 0 && !document.hidden && !blockingDialog ? room : '';
   if (!next) { stopAmbience(); return; }
@@ -620,19 +620,18 @@ function paintPrologue(elapsed) {
   $('prologue-progress').style.transform = `scaleX(${Math.min(elapsed / PROLOGUE_LENGTH, 1)})`;
 }
 
-function renderPrologueSound() {
-  $('prologue-sound').setAttribute('aria-pressed', String(prologue.sound));
-  $('prologue-sound').textContent = t(prologue.sound ? '오프닝 소리 끄기' : '오프닝 소리 켜기');
+function renderSoundControls() {
+  const label = t(game.sound ? '소리 켬' : '소리 끔');
+  for (const id of ['sound', 'prologue-sound']) {
+    $(id).setAttribute('aria-pressed', String(game.sound));
+    $(id).textContent = label;
+  }
+  $('receiver-audio-status').textContent = label;
 }
 
 function playPrologueSound() {
-  if (!prologue?.sound || prologue.startedAt === null) return;
-  const state = prologue;
-  playClip('prologue', () => prologueElapsed() / 1000).then((played) => {
-    if (played !== false || state !== prologue || !state.sound || state.startedAt === null) return;
-    state.sound = false;
-    renderPrologueSound();
-  });
+  if (!game.sound || !prologue || prologue.startedAt === null) return;
+  playClip('prologue', () => prologueElapsed() / 1000);
 }
 
 function tickPrologue() {
@@ -683,7 +682,7 @@ function animateReceiverHandoff(from) {
 function finishPrologue(completed = false) {
   if (!prologue) return;
   const atReceiver = openingReceiverHere();
-  const continueVoice = atReceiver && !game.run.receiverTuned && (game.sound || (completed && prologue.sound));
+  const continueVoice = atReceiver && game.sound;
   const from = completed && atReceiver && !matchMedia('(prefers-reduced-motion: reduce)').matches
     ? $('prologue').querySelector('[data-prologue-image="receiver"]').getBoundingClientRect() : null;
   pausePrologue();
@@ -694,7 +693,10 @@ function finishPrologue(completed = false) {
   document.body.classList.remove('prologue-active');
   if (from) animateReceiverHandoff(from);
   $(atReceiver ? 'receiver-dial' : 'narration').focus({ preventScroll: true });
-  if (continueVoice) playClip('openingEcho');
+  if (continueVoice) {
+    if (game.run.receiverTuned) listenToBand();
+    else playClip('openingEcho');
+  }
 }
 
 function startPrologue(replay = false) {
@@ -702,11 +704,11 @@ function startPrologue(replay = false) {
   for (const art of $('prologue').querySelectorAll('[data-src]')) {
     if (!art.hasAttribute('src')) art.src = art.dataset.src;
   }
-  prologue = { elapsed: 0, startedAt: null, frame: 0, sound: false };
+  prologue = { elapsed: 0, startedAt: null, frame: 0 };
   $('prologue-start').textContent = t(replay ? '본편으로 돌아가기' : '바로 시작');
   $('prologue-title').hidden = true;
   paintPrologue(0);
-  renderPrologueSound();
+  renderSoundControls();
   showGameDialog('prologue');
   document.body.classList.add('prologue-active');
   resumePrologue();
@@ -837,6 +839,34 @@ function enter(id) {
   const cue = step(rooms[id].arrival, '', '이동 · {0}', [id]);
   if (id === 'hall' && r.elapsed >= CART_LEAVES && !r.tape) learn('departure');
   update(cue, true);
+}
+
+function renderPlaces(id, travel, inSheet = false) {
+  $(id).replaceChildren(...Object.entries(rooms).map(([roomId, room]) => {
+    const current = game.run.room === roomId;
+    const button = element('button', '', 'place');
+    button.append(element('span', room.name), element('small', current ? '현재 위치' : inSheet ? fmt('{0} · 1행동', t(room.floor)) : room.floor));
+    button.type = 'button';
+    button.disabled = current;
+    button.dataset.room = roomId;
+    if (current) button.setAttribute('aria-current', 'location');
+    button.addEventListener('click', () => travel(roomId));
+    return button;
+  }));
+}
+
+let placeChoice = '';
+let placeScroll;
+
+function openPlaces() {
+  if ($('locations').hidden || $('places-dialog').open) return;
+  const main = document.querySelector('main');
+  placeScroll = { main: main.scrollTop, page: window.scrollY };
+  renderPlaces('sheet-places', (id) => {
+    placeChoice = id;
+    $('places-dialog').close();
+  }, true);
+  $('places-dialog').showModal();
 }
 
 function finish(id, lead = {}) {
@@ -1256,13 +1286,13 @@ function choices() {
     if (knows('relay')) {
       const plan = reservationPlan();
       if (!plan.proposed && !plan.actual) {
-        offer('compare', '수첩에서 증거 연결하기', '두 시계에서 같은 사건을 찾고 시차 가설을 세웁니다.', openJournal, true, '시간 유지');
+        offer('compare', '수첩에서 증거 연결하기', '두 시계에서 같은 사건을 찾고 시차 가설을 세웁니다.', openClockReview, true, '시간 유지');
       } else if (plan.canApply && plan.proposed !== failed) {
         offer('reserve-relay', plan.pending ? '실제 예약 변경하기' : '보조 채널 예약하기',
           plan.pending ? fmt('{0} 예약을 {1}로 바꿉니다.', time(plan.actual), time(plan.proposed))
             : fmt('이쪽 시계 {0}에 연결을 시도합니다.', time(plan.proposed)), reserveRelay, true);
       } else if (plan.proposed && !plan.actual) {
-        offer('review-clocks', '수첩에서 시각 다시 확인', '이번 밤의 예약 시각을 지났습니다.', openJournal, false, '시간 유지');
+        offer('review-clocks', '수첩에서 시각 다시 확인', '이번 밤의 예약 시각을 지났습니다.', openClockReview, false, '시간 유지');
       }
     }
     if (r.linked) {
@@ -1933,13 +1963,15 @@ function render() {
   $('beats').replaceChildren(...Array.from({ length: LIMIT }, (_, index) => element('span', '', index < left ? 'on' : '')));
   $('cycle').textContent = fmt('{0}회차', game.loop);
   $('journal-count').textContent = game.known.length;
-  $('sound').textContent = t(game.sound ? '소리 끄기' : '소리 켜기');
-  $('sound').setAttribute('aria-pressed', String(game.sound));
+  renderSoundControls();
+  const hasStarted = r.elapsed > 0 || game.loop > 1;
+  const canMove = hasStarted && r.phase === 'play' && !r.review && !r.console;
   $('rewind').hidden = r.phase !== 'play' || r.elapsed === 0 || r.review || Boolean(r.console);
-  $('quick').hidden = r.elapsed === 0 || Boolean(transmission) || (hasLiveCall() && Boolean(r.console));
-  $('quick-review').disabled = r.phase === 'play' && Boolean(r.console);
-  $('quick-review').textContent = t(r.review || r.phase !== 'play' ? '회차 기록' : '되감기 검토');
-  document.body.classList.toggle('quick-active', r.elapsed > 0 && !transmission);
+  $('quick').hidden = !hasStarted || Boolean(transmission) || (hasLiveCall() && Boolean(r.console));
+  $('quick-places').disabled = !canMove;
+  $('quick-review').disabled = !r.elapsed || (r.phase === 'play' && Boolean(r.console));
+  $('quick-review').textContent = t('회차 기록');
+  document.body.classList.toggle('quick-active', hasStarted && !transmission);
   renderScene();
   renderReceiver();
   renderTransmission();
@@ -1960,16 +1992,8 @@ function render() {
   }] : r.phase === 'play' ? choices() : [advanceNight];
   renderActions(options);
 
-  $('locations').hidden = r.phase !== 'play' || r.review || Boolean(r.console) || (game.loop === 1 && r.elapsed === 0);
-  $('places').replaceChildren(...Object.entries(rooms).map(([id, room]) => {
-    const button = element('button', '', 'place');
-    button.append(element('span', room.name), element('small', r.room === id ? '현재 위치' : room.floor));
-    button.type = 'button';
-    button.disabled = r.room === id;
-    if (r.room === id) button.setAttribute('aria-current', 'location');
-    button.addEventListener('click', () => enter(id));
-    return button;
-  }));
+  $('locations').hidden = !canMove;
+  renderPlaces('places', enter);
 
   $('ending-count').textContent = game.unlocked.length + ' / ' + Object.keys(endings).length;
   $('epilogue-open').hidden = !epilogueUnlocked() || Boolean(transmission);
@@ -1998,16 +2022,18 @@ let journalCommand = '';
 function renderDeduction() {
   const discovered = Object.entries(evidence).filter(([, item]) => knows(item.clue));
   $('deduction').hidden = !discovered.length;
+  $('clock-empty').hidden = Boolean(discovered.length);
   if ($('deduction').hidden) return;
   const failed = latestFailedReservation();
   const r = game.run;
-  $('clock-recovery').hidden = !failed;
-  $('failed-time').textContent = failed ? fmt('{0} 예약 실패 · 연결한 기록의 시각을 다시 비교하세요.', time(failed)) : '';
-  $('paired-clocks').replaceChildren(...(failed ? game.matches.flatMap((event) => {
+  const paired = game.matches.flatMap((event) => {
     const pair = discovered.map(([, item]) => item).filter((item) => item.event === event);
     if (pair.length !== 2) return [];
     return [element('li', fmt('같은 {0} · 이쪽 {1} / 건너편 {2}', t(event === 'bell' ? '종소리' : '방송 멘트'), pair[0].time, pair[1].time))];
-  }) : []));
+  });
+  $('clock-recovery').hidden = !failed && !paired.length;
+  $('failed-time').textContent = failed ? fmt('{0} 예약 실패 · 연결한 기록의 시각을 다시 비교하세요.', time(failed)) : t('연결한 시계 기록');
+  $('paired-clocks').replaceChildren(...paired);
   const hypothesisStage = $('hypothesis-stage');
   const hypothesisSlot = $(failed ? 'retry-hypothesis' : 'normal-hypothesis');
   if (hypothesisStage.parentElement !== hypothesisSlot) hypothesisSlot.append(hypothesisStage);
@@ -2149,37 +2175,53 @@ function renderBroadcastMystery() {
   }) : []));
 }
 
-function openJournal() {
+const journalTabs = ['clock', 'story', 'audio'];
+let journalTab = 'story';
+
+function selectJournalTab(tab, focus = false) {
+  journalTab = tab;
+  for (const id of journalTabs) {
+    const active = id === tab;
+    const button = $(`tab-${id}`);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+    $(`journal-${id}`).hidden = !active;
+  }
+  $('journal').scrollTop = 0;
+  if (focus) $(`tab-${tab}`).focus({ preventScroll: true });
+}
+
+function openJournal(requestedTab) {
   selectedEvidence = {};
   pairFeedback = '';
   renderDeduction();
   renderBroadcastMystery();
   $('clues').replaceChildren(...game.known.filter((id) => !mysteryEvidence.includes(id)).map((id) => {
-    const { title, fact, question, clip } = clues[id];
+    const { title, fact, question } = clues[id];
     const item = element('li');
     item.append(element('h3', title), element('p', fact), element('p', question, 'question'));
-    if (clip) {
-      const labels = { opening: '첫 교신 다시 듣기', distantBell: '기록된 종소리 듣기', onAir: '오프닝 다시 듣기',
-        receiverStaff: '직원 무전 다시 듣기', receiverEcho: '미확인 신호 다시 듣기' };
-      item.append(listenButton(clip, labels[clip]));
-    }
     return item;
   }));
+  $('journal-recordings').replaceChildren(...game.known.filter((id) => clues[id].clip).map((id) => {
+    const { title, fact, clip } = clues[id];
+    const item = element('li');
+    item.append(element('h3', title), element('p', fact), listenButton(clip, '녹음 듣기'));
+    return item;
+  }));
+  selectJournalTab(journalTabs.includes(requestedTab) ? requestedTab : journalTab);
   showGameDialog('journal');
+  $('journal').scrollTop = 0;
 }
 
 function openClockReview() {
-  openJournal();
-  const summary = $('clock-recovery');
-  if (!summary.hidden) {
-    summary.scrollIntoView({ block: 'nearest' });
-    summary.focus({ preventScroll: true });
-  }
+  openJournal('clock');
+  const summary = $('clock-recovery').hidden ? $('deduction-title') : $('clock-recovery');
+  summary.scrollIntoView({ block: 'nearest' });
+  summary.focus({ preventScroll: true });
 }
 
 function openMystery() {
-  openJournal();
-  $('mystery-title').scrollIntoView({ block: 'start' });
+  openJournal('story');
   $('mystery-title').focus({ preventScroll: true });
 }
 
@@ -2492,6 +2534,35 @@ $('copy-link').addEventListener('click', async () => {
 });
 $('journal-open').addEventListener('click', openJournal);
 $('quick-journal').addEventListener('click', openJournal);
+$('journal-tabs').addEventListener('click', ({ target }) => {
+  const tab = target.closest('[data-tab]');
+  if (tab) selectJournalTab(tab.dataset.tab, true);
+});
+$('journal-tabs').addEventListener('keydown', (event) => {
+  const index = journalTabs.indexOf(event.target.dataset.tab);
+  const previous = (index + journalTabs.length - 1) % journalTabs.length;
+  const next = (index + 1) % journalTabs.length;
+  const destination = { ArrowLeft: previous, ArrowRight: next, Home: 0, End: journalTabs.length - 1 }[event.key];
+  if (index < 0 || destination === undefined) return;
+  event.preventDefault();
+  selectJournalTab(journalTabs[destination], true);
+});
+$('quick-places').addEventListener('click', openPlaces);
+$('places-close').addEventListener('click', () => $('places-dialog').close());
+$('places-dialog').addEventListener('close', () => {
+  if (placeChoice) {
+    const destination = placeChoice;
+    placeChoice = '';
+    placeScroll = undefined;
+    enter(destination);
+    return;
+  }
+  if (!placeScroll) return;
+  $('quick-places').focus({ preventScroll: true });
+  document.querySelector('main').scrollTop = placeScroll.main;
+  window.scrollTo(0, placeScroll.page);
+  placeScroll = undefined;
+});
 $('quick-review').addEventListener('click', reviewNight);
 $('journal-close').addEventListener('click', () => $('journal').close());
 $('clock-resume').addEventListener('click', () => {
@@ -2563,7 +2634,7 @@ $('cancel-transfer').addEventListener('click', () => {
   $('import-save').focus();
 });
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
-  if (dialog.id !== 'prologue' && !document.querySelector('dialog[open]')) stopSceneAudio();
+  if (!['prologue', 'places-dialog'].includes(dialog.id) && !document.querySelector('dialog[open]')) stopSceneAudio();
   if (dialog.id === 'journal' && journalCommand) {
     const command = journalCommand;
     journalCommand = '';
@@ -2592,9 +2663,8 @@ $('prologue').addEventListener('cancel', (event) => {
 });
 $('prologue-sound').addEventListener('click', () => {
   if (!prologue) return;
-  prologue.sound = !prologue.sound;
-  renderPrologueSound();
-  if (prologue.sound) playPrologueSound();
+  toggleSoundPreference();
+  if (game.sound) playPrologueSound();
   else stopClip();
 });
 $('prologue-replay').addEventListener('click', () => {
@@ -2634,6 +2704,22 @@ $('receiver-replay').addEventListener('click', () => playClip('receiverEcho'));
 $('transmission-skip').addEventListener('click', () => closeTransmission(true));
 drawSignal($('tape-wave'), [22, 63, 87, 49, 71, 43, 91, 68, 38, 55, 28, 14]);
 drawSignal($('remote-wave'), [16, 42, 64, 37, 52, 91, 70, 31, 79, 56, 68, 24]);
+const utilityMenu = $('utility-menu');
+const menuSummary = utilityMenu.querySelector('summary');
+utilityMenu.addEventListener('click', ({ target }) => {
+  if (!target.closest('.utility-panel button')) return;
+  utilityMenu.open = false;
+  menuSummary.focus({ preventScroll: true });
+});
+utilityMenu.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || !utilityMenu.open) return;
+  event.preventDefault();
+  utilityMenu.open = false;
+  menuSummary.focus({ preventScroll: true });
+});
+document.addEventListener('pointerdown', ({ target }) => {
+  if (utilityMenu.open && !utilityMenu.contains(target)) utilityMenu.open = false;
+});
 $('language').addEventListener('click', () => {
   game.language = game.language === 'en' ? 'ko' : 'en';
   if (location.protocol !== 'file:') {
@@ -2645,11 +2731,14 @@ $('language').addEventListener('click', () => {
   renderLanguage();
   render();
 });
-$('sound').addEventListener('click', () => {
+function toggleSoundPreference() {
   game.sound = !game.sound;
   save();
-  $('sound').textContent = t(game.sound ? '소리 끄기' : '소리 켜기');
-  $('sound').setAttribute('aria-pressed', String(game.sound));
+  renderSoundControls();
+}
+
+$('sound').addEventListener('click', () => {
+  toggleSoundPreference();
   syncAmbience();
   if (!game.sound) stopSceneAudio();
   else if (transmission) playTransmissionVoice();
@@ -2662,7 +2751,7 @@ function renderLanguage() {
   document.documentElement.lang = game.language;
   document.title = t('마지막 방송까지 8분');
   const english = game.language === 'en';
-  $('language').textContent = english ? '한국어' : 'EN';
+  $('language').textContent = english ? '한국어' : 'English';
   $('language').lang = english ? 'ko' : 'en';
   $('language').setAttribute('aria-label', english ? '한국어로 전환' : 'Switch to English');
   document.querySelectorAll('[data-text]').forEach((node) => { node.textContent = t(node.dataset.text); });

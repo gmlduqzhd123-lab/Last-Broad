@@ -714,5 +714,21 @@ const GAME_EN = {
   "한려 FM의 마지막 방송": "Hallyeo FM’s last broadcast",
   "송출 중": "On air",
   "선착장 외전 시작": "Start the pier epilogue",
-  "선착장 외전 이어하기": "Continue the pier epilogue"
+  "선착장 외전 이어하기": "Continue the pier epilogue",
+  "메뉴": "Menu",
+  "앱 설치": "Install app",
+  "QR 코드로 접속": "Open QR code",
+  "게임 소리": "Game sound",
+  "소리 켬": "Sound on",
+  "소리 끔": "Sound off",
+  "장소": "Places",
+  "{0} · 1행동": "{0} · 1 action",
+  "수첩 분류": "Journal sections",
+  "시계": "Clocks",
+  "이야기": "Story",
+  "녹음": "Recordings",
+  "수첩을 보는 동안 시간은 멈춥니다.": "Time stops while the journal is open.",
+  "아직 발견한 시계 기록이 없습니다.": "You haven’t found any clock records yet.",
+  "연결한 시계 기록": "Paired clock records",
+  "녹음 듣기": "Play recording"
 };
