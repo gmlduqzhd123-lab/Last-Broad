@@ -512,6 +512,7 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
 @media (max-width: 360px) {
   .scene[data-intro="true"] .picture { padding-top: 44px; }
   .scene[data-intro="true"] .scene-head .label { display: none; }
+  html[lang="en"] .scene[data-intro="true"] .scene-state { max-width: none; }
   .entry-brief { padding-block: 5px; line-height: 1.35; }
   .receiver-screen { grid-template-columns: 25px minmax(0, 1fr); gap: 5px; padding-block: 4px; font-size: .85rem; }
 }
