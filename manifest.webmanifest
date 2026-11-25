@@ -1,0 +1,17 @@
+{
+  "id": "/Last-Broad/",
+  "name": "마지막 방송까지 8분",
+  "short_name": "마지막 방송",
+  "description": "같은 밤을 되감아 한려 FM의 마지막 방송을 바꾸는 시간 루프 추리 게임",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101618",
+  "theme_color": "#101618",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
