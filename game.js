@@ -7,6 +7,8 @@ const CART_LEAVES = 5;
 const REPLY_WINDOW = 5;
 const TRANSMISSION_CUT = 1500;
 const TRANSMISSION_LENGTH = 7600;
+const CALL_QUESTION_START = 4.6145625; // The full call ends at 4.3745625 s, followed by 240 ms of static.
+const CALL_LEAD_LENGTH = 3600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
 const AUDIO_CACHE = 'last-broad-audio-v1';
 const DEFAULT_MIX = { speech: 100, effects: 65, ambience: 25 };
@@ -188,6 +190,7 @@ const newRun = () => ({
   tape: '', courier: false, dj: false, tuneAt: 0, linked: false, used: [], ending: '',
   review: false, console: '', consoleReady: false, syncMissed: false, log: [], routes: emptyRoutes(),
   receiverBand: 0, receiverTuned: false, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
+  intent: '',
 });
 
 function restoreGame(old) {
@@ -235,6 +238,7 @@ function restoreGame(old) {
       && ['play', 'expired', 'ending'].includes(previous.phase) && Array.isArray(previous.used)
       && (previous.phase !== 'ending' || Object.hasOwn(endings, previous.ending))) {
       fresh.run = { ...newRun(), ...previous };
+      if (!['contact', 'connect'].includes(fresh.run.intent)) fresh.run.intent = '';
       if (!['voices', 'signal', 'both'].includes(fresh.run.console)) fresh.run.console = '';
       fresh.run.routes = emptyRoutes();
       if (previous.console === 'both') {
@@ -308,6 +312,8 @@ function save() {
 
 let soundContext;
 let speaking;
+let voiceId = '';
+let heardCallRun;
 let playback = 0;
 let activeExchangeLine = -1;
 let audioLevels;
@@ -353,6 +359,7 @@ function stopClip() {
   playback += 1;
   const previous = speaking;
   speaking = null;
+  voiceId = '';
   if (previous) {
     try { previous.stop(); } catch { /* An unavailable audio node must not block play. */ }
   }
@@ -385,12 +392,16 @@ async function playClip(id, startAt = null, exchangeIndex = -1) {
     if (!context || !voices[id]) return false;
     stopClip();
     thisPlayback = playback;
+    voiceId = id;
     const audio = recording(context, id);
     if (next) recording(context, next).catch(() => {});
     const buffer = await audio;
     if (thisPlayback !== playback || document.hidden) return;
     const offset = startAt ? startAt() : 0;
-    if (offset >= buffer.duration) return;
+    if (offset >= buffer.duration) {
+      voiceId = '';
+      return;
+    }
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(audioLevels.speech);
@@ -399,6 +410,8 @@ async function playClip(id, startAt = null, exchangeIndex = -1) {
       source.disconnect();
       if (speaking === source) {
         speaking = null;
+        voiceId = '';
+        if (id === 'callWithQuestion' && game.mix.speech > 0 && context.state === 'running') heardCallRun = game.run;
         if (exchangeIndex >= 0) setExchangeLine(-1);
         applyMix();
       }
@@ -409,6 +422,7 @@ async function playClip(id, startAt = null, exchangeIndex = -1) {
     if (exchangeIndex >= 0) setExchangeLine(exchangeIndex);
     return true;
   } catch {
+    if (thisPlayback === playback) voiceId = '';
     continueExchange();
     return false;
   }
@@ -769,7 +783,7 @@ function enter(id) {
   update(cue, true);
 }
 
-function finish(id) {
+function finish(id, lead = {}) {
   if (!game.unlocked.includes(id)) game.unlocked.push(id);
   const storyReply = game.storySolved && Object.hasOwn(storyEndings, id);
   if (storyReply && !game.storyReplies.includes(id)) game.storyReplies.push(id);
@@ -779,7 +793,7 @@ function finish(id) {
   });
   observe(ending.transcript);
   save();
-  startTransmission();
+  startTransmission(lead);
 }
 
 function transmissionClip() {
@@ -792,51 +806,74 @@ function renderTransmission() {
   stage.hidden = !transmission;
   $('narration').hidden = Boolean(transmission);
   if (!transmission) return;
-  const { id, cut } = transmission;
+  const { id, cut, recall } = transmission;
   const scene = transmissions[id];
   const image = $('transmission-image');
   const art = cut ? scene.art : id === 'signal' ? rooms.roof.art : rooms.studio.art;
   if (image.getAttribute('src') !== art) image.setAttribute('src', art);
   stage.dataset.mode = id;
   stage.dataset.cut = String(cut);
-  $('transmission-title').textContent = t(cut ? scene.scene : scene.start);
+  stage.dataset.recall = String(Boolean(recall));
+  $('transmission-title').textContent = t(recall ? '건너편 윤서의 마지막 호출' : cut ? scene.scene : scene.start);
   const caption = game.run.storyReply ? storyEndings[id].transcript : scene.caption;
-  $('transmission-caption').textContent = t(cut ? caption : '마지막 송출을 시작합니다.');
+  $('transmission-caption').textContent = t(recall ? callQuestion : cut ? caption : '마지막 송출을 시작합니다.');
 }
 
 function closeTransmission(stopAudio = false) {
   if (!transmission) return;
   clearTimeout(transmission.cutTimer);
   clearTimeout(transmission.endTimer);
+  clearTimeout(transmission.callTimer);
   const restoreFocus = $('transmission').contains(document.activeElement);
   transmission = null;
   if (stopAudio) stopClip();
   render();
-  if (restoreFocus) {
-    $('narration').focus({ preventScroll: true });
-    $('narration').scrollIntoView({ block: 'nearest' });
-  }
+  if (restoreFocus) $('recap').focus({ preventScroll: true });
+  scrollGameToStart();
 }
 
-function startTransmission() {
-  if (transmission || game.run.phase !== 'ending') return;
-  stopSceneAudio();
-  syncAmbience();
-  const id = game.run.ending;
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  transmission = { id, cut: reduced, cutTimer: null, endTimer: null };
-  if (!reduced) {
-    new Image().src = transmissions[id].art;
-    transmission.cutTimer = setTimeout(() => {
-      transmission.cut = true;
+function playTransmissionVoice() {
+  const sequence = transmission;
+  if (!sequence.recall) {
+    playClip(transmissionClip());
+    return;
+  }
+  playClip('callWithQuestion', () => CALL_QUESTION_START).then((played) => {
+    if (!played || transmission !== sequence || !sequence.recall) return;
+    clearTimeout(sequence.callTimer);
+    sequence.callTimer = setTimeout(beginFinalBroadcast, CALL_LEAD_LENGTH);
+  });
+}
+
+function beginFinalBroadcast() {
+  const sequence = transmission;
+  sequence.recall = false;
+  sequence.cut = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!sequence.cut) {
+    new Image().src = transmissions[sequence.id].art;
+    sequence.cutTimer = setTimeout(() => {
+      sequence.cut = true;
       renderTransmission();
     }, TRANSMISSION_CUT);
   }
-  transmission.endTimer = setTimeout(closeTransmission, TRANSMISSION_LENGTH);
+  sequence.endTimer = setTimeout(closeTransmission, TRANSMISSION_LENGTH);
+  renderTransmission();
+  if (game.sound) playTransmissionVoice();
+  else stopClip();
+}
+
+function startTransmission({ recall = false, audible = false } = {}) {
+  if (transmission || game.run.phase !== 'ending') return;
+  stopSceneAudio();
+  syncAmbience();
+  transmission = { id: game.run.ending, cut: false, recall };
   render();
   $('transmission-title').focus({ preventScroll: true });
   $('transmission-title').scrollIntoView({ block: 'nearest' });
-  if (game.sound) playClip(transmissionClip());
+  if (recall) {
+    transmission.callTimer = setTimeout(beginFinalBroadcast, CALL_LEAD_LENGTH);
+    if (audible) playTransmissionVoice();
+  } else beginFinalBroadcast();
 }
 
 function reviewNight() {
@@ -903,6 +940,7 @@ function rewind() {
   game.previousLoop = { loop: game.loop, moments: loopMoments(game.run) };
   game.loop += 1;
   game.run = newRun();
+  $('recap-details').open = false;
   $('action-history').open = false;
   update('rewind');
   animateRewind(from);
@@ -916,6 +954,16 @@ function hasRadioExchange() {
   const r = game.run;
   return hadRadioExchange() && r.phase === 'play' && !r.review &&
     (r.elapsed === REPLY_WINDOW || (r.console === 'both' && r.consoleReady));
+}
+
+function hasLiveCall() {
+  const r = game.run;
+  return r.phase === 'play' && !r.review && r.linked;
+}
+
+function scrollGameToStart() {
+  document.querySelector('main').scrollTop = 0;
+  window.scrollTo(0, 0);
 }
 
 function replayExchange() {
@@ -933,11 +981,10 @@ function update(cue = '', playSceneClip = false) {
   syncAmbience();
   if (cue) playEffect(cue);
   if (playSceneClip && game.sound && game.run.clip) playSceneVoice();
-  const lead = document.querySelector('#opening-action button, #featured-action button');
+  const lead = document.querySelector('#opening-action button, #featured-action button, #console-action button');
   (lead && !lead.disabled ? lead : $('narration')).focus({ preventScroll: true });
-  if (game.run.phase !== 'play' || game.run.elapsed === 0) {
-    document.querySelector('main').scrollTop = 0;
-    window.scrollTo(0, 0);
+  if (game.run.phase !== 'play' || game.run.elapsed === 0 || (hasLiveCall() && lead)) {
+    scrollGameToStart();
     return;
   }
   if (lead) {
@@ -969,8 +1016,8 @@ function revealAction(control) {
   if (top < hudBottom || bottom > limit) control.scrollIntoView({ block: 'center' });
 }
 
-function focusConsoleControl(control = document.querySelector('#featured-action button, #actions button')) {
-  revealAction(control);
+function focusConsoleControl(control = $('console-action').querySelector('button')) {
+  if (!hasLiveCall()) revealAction(control);
   control.focus({ preventScroll: true });
 }
 
@@ -992,8 +1039,10 @@ function consoleActions() {
       both: ['마이크 열고 함께 송출', '연결된 두 채널로 목소리와 인터뷰를 보냅니다.', '옥상의 마이크가 켜지고 방송실의 테이프가 동시에 돌아간다.'],
     }[r.console];
     actions.push({ id: 'finish-broadcast', title: control[0], detail: control[1], cost: '1행동', primary: true, run: () => {
+      const recall = r.console !== 'voices' && r.linked && heardCallRun !== r;
+      const audible = game.sound || voiceId === 'delivery' || voiceId === 'callWithQuestion';
       step(control[2], '', control[0]);
-      finish(r.console);
+      finish(r.console, { recall, audible });
     } });
   }
   if (!r.consoleReady) {
@@ -1007,7 +1056,7 @@ function consoleActions() {
 }
 
 function cueDetail() {
-  return routesReady(game.run.routes) ? '23:57에 지금 연결한 두 채널로 신호를 보냅니다.' : '아래에서 두 송출선을 먼저 연결하세요.';
+  return routesReady(game.run.routes) ? '23:57에 지금 연결한 두 채널로 신호를 보냅니다.' : '두 송출선을 연결하면 신호를 보낼 수 있습니다.';
 }
 
 function reserveRelay() {
@@ -1117,6 +1166,9 @@ function choices() {
     scene('read-airlog', '건너편 방송 일지 읽기', '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
       '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”\n뒷면 편성표에는 순임의 인터뷰 칸이 비어 있다.',
       '', false, () => learn('remoteSlot'));
+    if (r.intent === 'connect' && knows('routing')) {
+      offer('plan-studio', '역할을 나누러 방송실로', '방송실에서 윤서에게 송출 준비를 맡길 수 있습니다.', () => enter('studio'), true);
+    }
   }
 
   if (r.room === 'roof') {
@@ -1190,6 +1242,7 @@ function objective() {
   if (r.phase === 'ending') return '오늘 밤의 방송이 끝났다';
   const opening = openingPlan();
   if (opening) return opening.goal;
+  if (r.intent) return plannedObjective(r);
   if (r.dj && r.courier && !r.syncMissed) return r.linked && r.tape === 'delivered'
     ? '지금 윤서에게 동시 송출 신호를 보낸다' : '옥상에서 두 시계를 비교해 교신을 예약한다';
   if (r.linked && r.syncMissed) return '건너편 호출에 응답한다';
@@ -1209,9 +1262,29 @@ function objective() {
   return '자정 전에 주민 인터뷰 원본을 방송한다';
 }
 
+function plannedObjective(r) {
+  if (r.linked) {
+    return r.dj && r.tape === 'delivered' && r.elapsed === REPLY_WINDOW ? '지금 윤서에게 동시 송출 신호를 보낸다' : '건너편 호출에 응답한다';
+  }
+  if (r.intent === 'connect') {
+    if (!knows('routing')) return '자료실에서 두 채널 연결표를 찾는다';
+    if (!r.courier || !r.dj) {
+      if (r.elapsed >= CART_LEAVES) return '다음 회차에 방송실과 옥상의 일을 나눈다';
+      if (!r.courier && !r.dj) return '재호에게 원본을, 윤서에게 방송실을 맡긴다';
+      return r.courier ? '방송실에서 윤서에게 송출 준비를 맡긴다' : '재호에게 원본 운반을 맡긴다';
+    }
+  }
+  const plan = reservationPlan();
+  if (plan.pending) return '예약한 시각까지 교신을 기다린다';
+  if (r.tuneAt || r.elapsed >= REPLY_WINDOW) return '수첩에서 다음 교신 시각을 확인한다';
+  if (!knows('relay')) return '옥상에서 건너편 수신 기록을 찾는다';
+  if (!plan.proposed) return '수첩에서 같은 사건의 기록을 연결한다';
+  return '옥상 송신기에 교신 시각을 예약한다';
+}
+
 function openingPlan() {
   if (game.loop < 2 || !openingReceiverHere()) return null;
-  const move = (goal, question, room, title) => ({ goal, question, action: { id: room, title, cost: '1행동', run: () => enter(room) } });
+  const move = (goal, question, room, title, intent) => ({ goal, question, intent, action: { id: room, title, cost: '1행동', run: () => enter(room) } });
   if (epilogueUnlocked() && !game.epilogueSeen) {
     return { goal: '첫 교신의 원본을 확인한다', question: '23:52의 첫 교신에서 어떤 목소리가 들렸을까요?',
       action: { id: 'epilogue', title: '첫 교신의 원본 듣기', cost: '시간 유지', run: openEpilogue } };
@@ -1219,13 +1292,13 @@ function openingPlan() {
   if (epilogueUnlocked()) return null;
   const last = game.previousLoop?.moments.at(-1)?.id;
   if (!game.unlocked.includes('both') && (game.unlocked.includes('signal') || last === 'syncMissed' || last === 'cue')) {
-    if (!knows('routing')) return move('두 방송을 이을 방법을 찾는다', '두 채널은 어디에서 연결할 수 있을까요?', 'archive', '자료실로 이동');
+    if (!knows('routing')) return move('두 방송을 이을 방법을 찾는다', '두 채널은 어디에서 연결할 수 있을까요?', 'archive', '자료실로 이동', 'connect');
     if (knows('staffCall') && knows('label')) return { goal: '방송실과 옥상의 일을 나눈다',
-      question: '내가 옥상에 있는 동안 누가 원본을 옮길까요?', option: 'radio-courier' };
-    return move('재호에게 원본 운반을 맡긴다', '내가 옥상에 있는 동안 누가 원본을 옮길까요?', 'hall', '복도로 이동');
+      question: '내가 옥상에 있는 동안 누가 원본을 옮길까요?', option: 'radio-courier', intent: 'connect' };
+    return move('재호에게 원본 운반을 맡긴다', '내가 옥상에 있는 동안 누가 원본을 옮길까요?', 'hall', '복도로 이동', 'connect');
   }
   if (!game.unlocked.includes('signal') && (game.unlocked.includes('voices') || knows('relay'))) {
-    return move('건너편 윤서의 다음 호출을 찾는다', '건너편 윤서는 언제 다시 부를까요?', 'roof', '옥상 송신실로 이동');
+    return move('건너편 윤서의 다음 호출을 찾는다', '건너편 윤서는 언제 다시 부를까요?', 'roof', '옥상 송신실로 이동', 'contact');
   }
   return move('수레가 떠나기 전에 원본을 찾는다', game.nextQuestion || '이번에는 어떤 단서를 먼저 확인할까요?', 'hall', '복도로 이동');
 }
@@ -1272,6 +1345,7 @@ function renderExchangeStatus() {
 
 function renderExchange(show) {
   $('radio-exchange').hidden = !show;
+  $('exchange-transcript').hidden = !show;
   if (!show) {
     $('exchange-transcript').open = false;
     return;
@@ -1318,15 +1392,20 @@ function renderScene() {
   }
   $('story').replaceChildren(...story);
   const exchange = hasRadioExchange();
-  scene.dataset.exchange = String(exchange);
-  const event = exchange ? r.event.split('\n').filter((line) => ![tapeDelivered, callWords, callQuestion].includes(line)).join('\n') : r.event;
+  const liveCall = hasLiveCall();
+  scene.dataset.exchange = String(liveCall);
+  scene.dataset.liveConsole = String(liveCall && Boolean(r.console));
+  scene.dataset.result = String(!transmission && r.phase !== 'play');
+  $('solo-call').hidden = !liveCall || exchange;
+  $('solo-caption').textContent = t(callQuestion);
+  const event = liveCall ? r.event.split('\n').filter((line) => ![callWords, callQuestion].includes(line) && (!exchange || line !== tapeDelivered)).join('\n') : r.event;
   $('event').hidden = !event;
   $('event').textContent = t(event);
   renderExchange(exchange);
   const clip = intro ? 'opening' : r.clip;
   const replayLabels = { opening: '첫 교신 듣기', delivery: '재호의 무전 듣기', call: '건너편 호출 듣기', callWithQuestion: '건너편 호출 듣기' };
   replayLabels.onAir = '오프닝 다시 듣기';
-  const replay = !exchange && clip ? [listenButton(clip, replayLabels[clip] ?? '마지막 송출 다시 듣기')] : [];
+  const replay = !liveCall && clip ? [listenButton(clip, replayLabels[clip] ?? '마지막 송출 다시 듣기')] : [];
   if (!exchange && hadRadioExchange()) {
     const listen = element('button', '두 무전 다시 듣기', 'utility listen');
     listen.type = 'button';
@@ -1349,8 +1428,14 @@ function renderScene() {
 function renderBroadcast() {
   const r = game.run;
   const panel = $('broadcast');
-  const slot = $(hasRadioExchange() ? 'live-console' : 'broadcast-slot');
+  const live = hasLiveCall() && Boolean(r.console);
+  const slot = $(live ? 'live-console' : 'broadcast-slot');
   if (panel.parentElement !== slot) slot.append(panel);
+  const radio = $(live ? 'console-radio' : 'lead-radio');
+  if ($('radio-exchange').parentElement !== radio) radio.append($('radio-exchange'), $('solo-call'));
+  const transcript = $(live ? 'console-transcript' : 'lead-radio');
+  if ($('exchange-transcript').parentElement !== transcript) transcript.append($('exchange-transcript'));
+  panel.dataset.compact = String(live);
   panel.hidden = !r.console || r.review || Boolean(transmission);
   if (!r.console) return;
   const onAir = r.phase === 'ending';
@@ -1363,7 +1448,10 @@ function renderBroadcast() {
       input.checked = r.routes[input.closest('fieldset').dataset.source] === input.value;
     }
     const { tape, relay } = r.routes;
-    const status = !tape || !relay ? '각 입력에 목적지를 골라 주세요.'
+    const connected = Number(Boolean(tape)) + Number(Boolean(relay));
+    $('routing-progress').textContent = fmt(connected === 2 && !routesReady(r.routes)
+      ? '연결 {0}/2 · 배선 확인' : '연결 {0}/2 · 시간 유지', connected);
+    const status = !tape || !relay ? ''
       : tape === relay ? '두 입력이 같은 채널에 모였습니다. 두 목적지의 신호를 확인하세요.'
         : routesReady(r.routes) ? '두 채널을 연결했습니다. 동시 송출 신호를 보낼 수 있습니다.'
           : '두 채널에 신호가 들어옵니다. 연결표와 비교해 목적지를 다시 확인하세요.';
@@ -1509,6 +1597,7 @@ function renderRecap() {
   const show = !transmission && (r.review || r.phase !== 'play');
   $('recap').hidden = !show;
   if (!show) return;
+  $('recap-title').textContent = t(r.phase === 'ending' ? endings[r.ending].title : '이번 밤의 기록');
   const outcomes = $('recap-outcomes');
   outcomes.hidden = r.phase === 'play';
   const interviewSent = r.ending === 'voices' || r.ending === 'both';
@@ -1520,8 +1609,8 @@ function renderRecap() {
     return item;
   };
   outcomes.replaceChildren(
-    resultRow('순임의 인터뷰', interviewSent, '방송을 내보냈습니다.', '이번 밤에는 방송을 내보내지 못했습니다.'),
-    resultRow('건너편 윤서', replySent, '마지막 호출에 답했습니다.', r.linked ? '교신을 열었습니다. 응답은 남기지 못했습니다.' : '이번 밤에는 응답을 보내지 못했습니다.'),
+    resultRow('순임의 인터뷰', interviewSent, '방송 완료', '방송하지 못함'),
+    resultRow('건너편 윤서', replySent, '응답 완료', r.linked ? '교신 연결 · 응답 없음' : '응답하지 못함'),
   );
   $('recap-epilogue').hidden = !epilogueUnlocked() || r.phase === 'play' || game.epilogueSeen;
   const [minute, reason] = turningPoint();
@@ -1677,21 +1766,29 @@ function renderActions(options) {
   const openingAction = opening && (opening.action ?? available(opening.option));
   $('opening-guidance').hidden = !openingAction;
   $('plan').textContent = openingAction ? t(opening.question) : '';
-  $('opening-action').replaceChildren(...(openingAction ? [actionButton({ ...openingAction, primary: true })] : []));
+  $('opening-action').replaceChildren(...(openingAction ? [actionButton({ ...openingAction, primary: true, run: () => {
+    if (opening.intent) r.intent = opening.intent;
+    openingAction.run();
+  } })] : []));
   $('entry-hall').hidden = openingAction?.id === 'hall';
 
   let featured;
+  const consoleCommand = r.phase === 'play' && !r.review && r.console ? options.find((option) => option.primary) : null;
+  $('console-action').replaceChildren(...(consoleCommand ? [actionButton(consoleCommand)] : []));
+  const recapOptions = r.review || r.phase !== 'play' ? options : [];
+  $('recap-actions').replaceChildren(...recapOptions.map(actionButton));
   if (r.phase === 'play' && !r.review && !openingAction) {
-    if (r.console === 'both') featured = available('send-cue') || available('finish-broadcast');
-    else if (!r.console && hasRadioExchange()) featured = available('both') || available('signal') || available('voices');
-    else if (r.room === 'hall' && r.elapsed < CART_ARRIVES) featured = available('wait');
-    else if (r.room === 'hall') featured = available('carry-to-studio') || available('search-cart');
-    else if (r.room === 'roof') featured = available('reserve-relay') || available('wait-event');
+    if (!r.console && hasLiveCall()) featured = available('both') || available('signal') || available('voices') || available('go-reply');
+    else if (!r.console && r.room === 'hall' && r.elapsed < CART_ARRIVES) featured = available('wait');
+    else if (!r.console && r.room === 'hall') featured = available('carry-to-studio') || available('search-cart');
+    else if (!r.console && r.room === 'roof') featured = available('reserve-relay') || available('wait-event')
+      || (r.intent === 'contact' && (available('compare') || (!knows('relay') && available('inspect-relay'))));
+    else if (!r.console && r.room === 'archive' && r.intent === 'connect') featured = available('plan-studio') || available('read-routing');
   }
   const featuredSlot = $('featured-action');
   featuredSlot.hidden = !featured;
   featuredSlot.replaceChildren(...(featured ? [actionButton({ ...featured, primary: true })] : []));
-  const rest = options.filter((option) => option !== featured && option !== openingAction);
+  const rest = options.filter((option) => option !== featured && option !== openingAction && option !== consoleCommand && !recapOptions.includes(option));
   $('actions').hidden = !rest.length;
   $('actions').replaceChildren(...rest.map((option) => actionButton({ ...option, primary: featured ? false : option.primary })));
 }
@@ -1709,7 +1806,7 @@ function render() {
   $('sound').textContent = t(game.sound ? '소리 끄기' : '소리 켜기');
   $('sound').setAttribute('aria-pressed', String(game.sound));
   $('rewind').hidden = r.phase !== 'play' || r.elapsed === 0 || r.review || Boolean(r.console);
-  $('quick').hidden = r.elapsed === 0 || Boolean(transmission);
+  $('quick').hidden = r.elapsed === 0 || Boolean(transmission) || (hasLiveCall() && Boolean(r.console));
   $('quick-review').disabled = r.phase === 'play' && Boolean(r.console);
   $('quick-review').textContent = t(r.review || r.phase !== 'play' ? '회차 기록' : '되감기 검토');
   document.body.classList.toggle('quick-active', r.elapsed > 0 && !transmission);
@@ -2330,6 +2427,7 @@ window.addEventListener('pagehide', pausePrologue);
 window.addEventListener('pageshow', resumePrologue);
 $('rewind').addEventListener('click', reviewNight);
 $('exchange-replay').addEventListener('click', replayExchange);
+$('solo-replay').addEventListener('click', () => playClip('callWithQuestion'));
 $('routing-panel').addEventListener('change', chooseRoute);
 $('hint-toggle').addEventListener('click', () => {
   if (!hintState.topic) return;
@@ -2372,7 +2470,7 @@ $('sound').addEventListener('click', () => {
   $('sound').setAttribute('aria-pressed', String(game.sound));
   syncAmbience();
   if (!game.sound) stopSceneAudio();
-  else if (transmission) playClip(transmissionClip());
+  else if (transmission) playTransmissionVoice();
   else if (openingReceiverHere() && game.run.receiverTuned) listenToBand();
   else if (openingReceiverHere() && !speaking) playClip('openingEcho');
   else playSceneVoice();
