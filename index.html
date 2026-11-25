@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=10">
-  <script defer src="./locale.js?v=10"></script>
-  <script defer src="./game.js?v=10"></script>
+  <link rel="stylesheet" href="./style.css?v=11">
+  <script defer src="./locale.js?v=11"></script>
+  <script defer src="./game.js?v=11"></script>
 </head>
 <body>
   <header class="masthead">
@@ -281,6 +281,30 @@
     </div>
     <p class="note" id="share-result" aria-live="polite"></p>
   </dialog>
+  <dialog id="prologue" aria-labelledby="prologue-episode">
+    <div class="prologue-art" aria-hidden="true">
+      <img data-prologue-image="harbor" data-src="./opening-harbor.webp" alt="">
+      <img data-prologue-image="pier" data-src="./pier.webp" alt="">
+      <img data-prologue-image="studio" data-src="./studio.webp" alt="">
+      <img data-prologue-image="receiver" data-src="./opening-receiver.webp" alt="">
+    </div>
+    <div class="prologue-bar">
+      <h2 id="prologue-episode" data-text="한려 FM 폐국의 밤">한려 FM 폐국의 밤</h2>
+      <button class="utility prologue-start" id="prologue-start" type="button" autofocus data-text="바로 시작">바로 시작</button>
+    </div>
+    <div class="prologue-title" id="prologue-title" hidden>
+      <p class="prologue-title-main" data-text="마지막 방송까지 8분">마지막 방송까지 8분</p>
+      <p class="prologue-title-clock"><time datetime="23:52">23:52</time></p>
+      <p class="prologue-mission" data-text="자정 전에 인터뷰 원본을 찾아 방송하세요.">자정 전에 인터뷰 원본을 찾아 방송하세요.</p>
+    </div>
+    <div class="prologue-footer">
+      <p class="prologue-caption" id="prologue-caption" aria-live="polite"></p>
+      <div class="prologue-controls">
+        <button class="utility" id="prologue-sound" type="button" aria-pressed="false" data-text="오프닝 소리 켜기">오프닝 소리 켜기</button>
+        <div class="prologue-progress" aria-hidden="true"><span id="prologue-progress"></span></div>
+      </div>
+    </div>
+  </dialog>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="panel-heading"><h2 id="settings-title" data-text="설정 · 저장">설정 · 저장</h2><button type="button" class="utility" id="settings-close" data-text="닫기">닫기</button></div>
     <section class="settings-section" aria-labelledby="mix-title">
@@ -288,6 +312,7 @@
       <label class="mix-control" for="speech-level"><span data-text="음성">음성</span><input id="speech-level" type="range" min="0" max="100" step="5" data-mix="speech"><span class="mix-value" aria-hidden="true"></span></label>
       <label class="mix-control" for="effects-level"><span data-text="효과음">효과음</span><input id="effects-level" type="range" min="0" max="100" step="5" data-mix="effects"><span class="mix-value" aria-hidden="true"></span></label>
       <label class="mix-control" for="ambience-level"><span data-text="배경음">배경음</span><input id="ambience-level" type="range" min="0" max="100" step="5" data-mix="ambience"><span class="mix-value" aria-hidden="true"></span></label>
+      <button class="utility" id="prologue-replay" type="button" aria-haspopup="dialog" data-text="오프닝 다시 보기">오프닝 다시 보기</button>
     </section>
     <section class="settings-section" aria-labelledby="offline-audio-title">
       <h3 id="offline-audio-title" data-text="오프라인 음성">오프라인 음성</h3>

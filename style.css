@@ -297,6 +297,66 @@ noscript { display: block; margin: 20px; }
 .transfer-preview dl div { padding: 6px 8px; background: #233630; border-radius: 5px; overflow-wrap: anywhere; }
 .transfer-preview dt { color: var(--muted); font-size: .81rem; }
 .transfer-preview dd { margin: 2px 0 0; font-size: .92rem; }
+body.prologue-active { overflow: hidden; }
+#prologue {
+  position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0; border-radius: 0; overflow: hidden; background: #080e11; color: #fff5e5;
+}
+#prologue::backdrop { background: #080e11; }
+.prologue-art, .prologue-art img, .prologue-art::after { position: absolute; inset: 0; width: 100%; height: 100%; }
+.prologue-art img { opacity: 0; object-fit: cover; object-position: center; }
+.prologue-art::after { content: ''; pointer-events: none; background: linear-gradient(180deg, #070d12bd 0%, #0b101425 25%, #090e120a 48%, #080e14de 88%, #070e13 100%); }
+#prologue[data-shot="harbor"] [data-prologue-image="harbor"],
+#prologue[data-shot="pier"] [data-prologue-image="pier"],
+#prologue[data-shot="studio"] [data-prologue-image="studio"],
+#prologue[data-shot="receiver"] [data-prologue-image="receiver"] { opacity: 1; }
+#prologue[data-shot="title"] [data-prologue-image="studio"] { opacity: .35; }
+.prologue-art [data-prologue-image="pier"] { object-position: 75% 52%; }
+.prologue-art [data-prologue-image="harbor"] { object-position: 63% 50%; }
+.prologue-art [data-prologue-image="receiver"] { object-position: 57% 50%; }
+.prologue-bar, .prologue-footer {
+  position: absolute; z-index: 1; inset-inline: max(18px, env(safe-area-inset-left));
+  width: auto; max-width: 1160px; margin-inline: auto;
+}
+.prologue-bar {
+  top: max(18px, env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.prologue-bar h2 { margin: 0; font: 700 clamp(.88rem, 2vw, 1.12rem)/1.35 var(--sans); color: #ffebce; text-shadow: 0 2px 8px #080e11; }
+.prologue-bar .prologue-start { padding-inline: 16px; min-height: 46px; background: #f3bd83; color: #1c1510; border-color: #ffe4c0; font-weight: 750; }
+.prologue-bar .prologue-start:hover { background: #ffdab0; }
+.prologue-footer { bottom: max(16px, env(safe-area-inset-bottom)); }
+.prologue-caption {
+  width: fit-content; max-width: min(100%, 700px); min-height: 2.4em; margin: 0 auto 16px; padding: 8px 13px;
+  text-align: center; color: #fff8ec; background: #080d12d9; border-radius: 6px;
+  font-size: clamp(.94rem, 2vw, 1.16rem); font-weight: 600; line-height: 1.55; white-space: pre-line;
+}
+.prologue-caption:empty { visibility: hidden; }
+.prologue-controls { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 14px; }
+.prologue-controls .utility { min-height: 44px; white-space: normal; background: #14212bef; }
+.prologue-progress { height: 3px; border-radius: 3px; background: #9daeb458; overflow: hidden; }
+.prologue-progress span { display: block; width: 100%; height: 100%; background: #f4c590; transform: scaleX(0); transform-origin: left; }
+.prologue-title { position: absolute; z-index: 1; top: 46%; inset-inline: 18px; transform: translateY(-50%); text-align: center; text-shadow: 0 3px 22px #030708; }
+.prologue-title-main { margin: 0 auto; max-width: 1000px; color: #fff3da; font-size: clamp(2.25rem, 8vw, 6.4rem); font-weight: 900; line-height: 1.08; letter-spacing: -.055em; text-wrap: balance; }
+.prologue-title-clock { margin: 14px 0 4px; color: #ffca8c; font: 700 clamp(1.25rem, 3vw, 2rem)/1.2 var(--mono); letter-spacing: .11em; }
+.prologue-mission { margin: 0 auto; max-width: 620px; color: #fff4df; font-weight: 650; font-size: clamp(.95rem, 2.3vw, 1.32rem); }
+#prologue-replay { margin-top: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .prologue-art img { transition: opacity .58s ease, transform 4.7s ease-out; }
+  #prologue[data-shot="harbor"] [data-prologue-image="harbor"], #prologue[data-shot="studio"] [data-prologue-image="studio"] { transform: scale(1.07); }
+  #prologue[data-shot="receiver"] [data-prologue-image="receiver"] { transform: scale(1.10); }
+}
+@media (max-width: 420px) {
+  .prologue-bar, .prologue-footer { inset-inline: 15px; }
+  .prologue-title { inset-inline: 12px; }
+  .prologue-bar .prologue-start { padding-inline: 12px; }
+  .prologue-caption { margin-bottom: 13px; }
+}
+@media (max-height: 370px) {
+  .prologue-bar { top: 8px; }
+  .prologue-footer { bottom: 7px; }
+  .prologue-caption { margin-bottom: 4px; }
+  .prologue-title-main { font-size: clamp(1.8rem, 6vw, 3.2rem); }
+}
 @media (min-width: 681px) {
   .actions button, .ending-link, .epilogue-link { scroll-margin-top: 92px; }
 }

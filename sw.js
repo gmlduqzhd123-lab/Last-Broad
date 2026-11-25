@@ -1,11 +1,12 @@
 // 같은 주소의 다른 앱과 캐시 저장소를 같이 쓰므로 내 접두어 캐시만 지운다
-const CACHE = 'last-broad-v6';
+const CACHE = 'last-broad-v7';
 const CACHE_PREFIX = 'last-broad-v';
 const AUDIO_CACHE = 'last-broad-audio-v1';
 const audioPath = new URL('audio/', self.registration.scope).pathname;
 const CORE = [
-  './', './index.html', './style.css?v=10', './locale.js?v=10', './game.js?v=10',
+  './', './index.html', './style.css?v=11', './locale.js?v=11', './game.js?v=11',
   './studio.webp', './hall.webp', './hall-empty.webp', './archive.webp', './roof.webp', './pier.webp',
+  './opening-harbor.webp', './opening-receiver.webp',
   './manifest.webmanifest', './ys-install.js', './ys-qr.js', './qr.svg', './icons/icon-192.png',
 ];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())));

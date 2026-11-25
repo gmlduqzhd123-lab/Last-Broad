@@ -9,6 +9,7 @@ const TRANSMISSION_LENGTH = 7600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
 const AUDIO_CACHE = 'last-broad-audio-v1';
 const DEFAULT_MIX = { speech: 100, effects: 65, ambience: 25 };
+const PROLOGUE_LENGTH = 20000;
 const PIER_LIMIT = 4;
 const routeSources = { tape: '순임의 테이프', relay: '건너편 교신' };
 const routeDestinations = { main: '한려 FM', aux: '보조 채널' };
@@ -54,6 +55,7 @@ const evidence = {
   remoteOpening: { clue: 'airlog', side: 'remote', event: 'onAir', time: '23:56', label: '건너편 방송 일지', detail: '“비 오는 항구의 밤입니다.”' },
 };
 const voices = {
+  prologue: './audio/prologue.wav',
   opening: './audio/opening.wav',
   call: './audio/call.wav',
   delivery: './audio/delivery.wav',
@@ -177,7 +179,7 @@ const newRun = () => ({
 
 function restoreGame(old) {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 10, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX },
+  const fresh = { version: 11, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX }, prologueSeen: false,
     storySolved: false, storyReplies: [], epilogueSeen: false,
     previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
@@ -247,6 +249,8 @@ function restoreGame(old) {
     if (!old.version && previous?.elapsed > 0) {
       fresh.run.message = '새로운 방송 회차가 시작됩니다. 이전 단서와 결말 기록을 이어받았습니다.';
     }
+    fresh.prologueSeen = old.prologueSeen === true || fresh.loop > 1 || fresh.run.elapsed > 0
+      || fresh.known.length > 1 || fresh.unlocked.length > 0;
   } catch { /* A blocked or unavailable save store still allows this session to play. */ }
   return fresh;
 }
@@ -258,6 +262,7 @@ function loadGame() {
 
 const game = loadGame();
 let transmission = null;
+let prologue = null;
 let hintState = { topic: '', level: 0, open: false };
 const $ = (id) => document.getElementById(id);
 const t = (value) => game.language === 'en'
@@ -339,11 +344,11 @@ function stopClip() {
   applyMix();
 }
 
-async function playClip(id) {
+async function playClip(id, startAt = null) {
   try {
     if (document.hidden) return;
     const context = audioContext();
-    if (!context || !voices[id]) return;
+    if (!context || !voices[id]) return false;
     stopClip();
     const thisPlayback = playback;
     if (!recordings.has(id)) {
@@ -357,6 +362,8 @@ async function playClip(id) {
     }
     const buffer = await recordings.get(id);
     if (thisPlayback !== playback) return;
+    const offset = startAt ? startAt() : 0;
+    if (offset >= buffer.duration) return;
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(audioLevels.speech);
@@ -367,8 +374,9 @@ async function playClip(id) {
       applyMix();
     };
     applyMix();
-    source.start();
-  } catch { /* Every recording has a text equivalent. */ }
+    source.start(0, offset);
+    return true;
+  } catch { return false; }
 }
 
 function playEffect(id) {
@@ -480,6 +488,96 @@ function showGameDialog(id) {
   stopSceneAudio();
   $(id).showModal();
   syncAmbience();
+}
+
+const prologueShots = [[0, 'dark'], [620, 'harbor'], [5050, 'pier'], [7550, 'studio'], [11000, 'title'], [16000, 'receiver']];
+const prologueCaptions = [
+  [0, '[낮은 뱃고동]'],
+  [850, '여기는 한려 FM입니다.\n자정을 기해 정규 방송을 마칩니다.'],
+  [5150, '오늘 마지막 순서는 주민들의 목소리입니다.\n아직 한 편의 이야기가 남았습니다.'],
+  [11000, ''],
+  [16100, '[꺼진 수신기에서 짧은 잡음]'],
+  [17300, '“거긴 아직…”'],
+];
+
+function prologueElapsed() {
+  return prologue.elapsed + (prologue.startedAt === null ? 0 : performance.now() - prologue.startedAt);
+}
+
+function paintPrologue(elapsed) {
+  const shot = prologueShots.findLast(([start]) => start <= elapsed)[1];
+  const dialog = $('prologue');
+  if (dialog.dataset.shot !== shot) {
+    dialog.dataset.shot = shot;
+    $('prologue-title').hidden = shot !== 'title';
+  }
+  const caption = t(prologueCaptions.findLast(([start]) => start <= elapsed)[1]);
+  if ($('prologue-caption').textContent !== caption) $('prologue-caption').textContent = caption;
+  $('prologue-progress').style.transform = `scaleX(${Math.min(elapsed / PROLOGUE_LENGTH, 1)})`;
+}
+
+function renderPrologueSound() {
+  $('prologue-sound').setAttribute('aria-pressed', String(prologue.sound));
+  $('prologue-sound').textContent = t(prologue.sound ? '오프닝 소리 끄기' : '오프닝 소리 켜기');
+}
+
+function playPrologueSound() {
+  if (!prologue?.sound || prologue.startedAt === null) return;
+  const state = prologue;
+  playClip('prologue', () => prologueElapsed() / 1000).then((played) => {
+    if (played !== false || state !== prologue || !state.sound || state.startedAt === null) return;
+    state.sound = false;
+    renderPrologueSound();
+  });
+}
+
+function tickPrologue() {
+  if (!prologue || prologue.startedAt === null) return;
+  const elapsed = prologueElapsed();
+  if (elapsed >= PROLOGUE_LENGTH) { finishPrologue(); return; }
+  paintPrologue(elapsed);
+  prologue.frame = requestAnimationFrame(tickPrologue);
+}
+
+function pausePrologue() {
+  if (!prologue || prologue.startedAt === null) return;
+  prologue.elapsed = prologueElapsed();
+  prologue.startedAt = null;
+  cancelAnimationFrame(prologue.frame);
+  stopClip();
+}
+
+function resumePrologue() {
+  if (!prologue || prologue.startedAt !== null || document.hidden) return;
+  prologue.startedAt = performance.now();
+  playPrologueSound();
+  tickPrologue();
+}
+
+function finishPrologue() {
+  if (!prologue) return;
+  pausePrologue();
+  prologue = null;
+  game.prologueSeen = true;
+  save();
+  $('prologue').close();
+  document.body.classList.remove('prologue-active');
+  $('narration').focus({ preventScroll: true });
+}
+
+function startPrologue(replay = false) {
+  if (prologue || transmission) return;
+  for (const art of $('prologue').querySelectorAll('[data-src]')) {
+    if (!art.hasAttribute('src')) art.src = art.dataset.src;
+  }
+  prologue = { elapsed: 0, startedAt: null, frame: 0, sound: false };
+  $('prologue-start').textContent = t(replay ? '본편으로 돌아가기' : '바로 시작');
+  $('prologue-title').hidden = true;
+  paintPrologue(0);
+  renderPrologueSound();
+  showGameDialog('prologue');
+  document.body.classList.add('prologue-active');
+  resumePrologue();
 }
 
 function drawSignal(node, levels) {
@@ -1688,7 +1786,7 @@ function renderOfflineAudio(message = '') {
   const status = message || (location.protocol === 'file:' ? '이 HTML 파일에 음성이 포함되어 있습니다.'
     : !audioPackAvailable ? '이 브라우저에서 오프라인 음성 저장을 사용할 수 없습니다.'
       : audioPackReady ? '음성 저장 완료. 인터넷 연결 없이 녹음을 재생할 수 있습니다.'
-        : '녹음 파일을 내려받습니다. 필요한 공간은 약 4MB입니다.');
+        : '녹음 파일을 내려받습니다. 필요한 공간은 약 5MB입니다.');
   $('offline-audio-status').textContent = t(status);
 }
 
@@ -1927,6 +2025,28 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', pauseHiddenAudio);
 window.addEventListener('pageshow', () => { if (soundContext) syncAmbience(); });
+$('prologue-start').addEventListener('click', finishPrologue);
+$('prologue').addEventListener('cancel', (event) => {
+  event.preventDefault();
+  finishPrologue();
+});
+$('prologue-sound').addEventListener('click', () => {
+  if (!prologue) return;
+  prologue.sound = !prologue.sound;
+  renderPrologueSound();
+  if (prologue.sound) playPrologueSound();
+  else stopClip();
+});
+$('prologue-replay').addEventListener('click', () => {
+  $('settings').close();
+  startPrologue(true);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pausePrologue();
+  else resumePrologue();
+});
+window.addEventListener('pagehide', pausePrologue);
+window.addEventListener('pageshow', resumePrologue);
 $('rewind').addEventListener('click', reviewNight);
 $('routing-panel').addEventListener('change', chooseRoute);
 $('hint-toggle').addEventListener('click', () => {
@@ -1990,3 +2110,4 @@ function renderLanguage() {
 save();
 renderLanguage();
 render();
+if (!game.prologueSeen) startPrologue();
