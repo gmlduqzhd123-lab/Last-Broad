@@ -84,7 +84,19 @@ h1 em { color: var(--accent); font-style: normal; }
 .dialogue.radio { background: #20312e; border-left-color: var(--signal); }
 .dialogue.radio strong { color: var(--signal); }
 .scene-event { margin-top: 9px; border: 1px solid #4c6860; border-radius: 7px; color: #bfefdf; background: #182925; padding: 9px 10px; font-size: .9rem; white-space: pre-line; line-height: 1.57; }
-.radio-exchange { margin-top: 10px; padding: 9px; border: 1px solid #4c6860; border-radius: 7px; background: #172421; }
+.featured-action { margin-bottom: 9px; }
+.featured-action .action:disabled { opacity: .56; }
+.opening-guidance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .65fr); align-items: center; gap: 10px; padding: 9px 13px; border-bottom: 1px solid #5d4936; background: #30271f; color: #ffe1b5; }
+.opening-guidance p { font-size: .93rem; line-height: 1.45; }
+.opening-guidance .action { min-height: 44px; }
+.radio-exchange { margin-bottom: 9px; padding: 8px 9px; border: 1px solid #4c6860; border-radius: 7px; background: #172421; }
+.radio-exchange .panel-heading { margin-bottom: 3px; }
+.radio-exchange h3 { font-size: .94rem; }
+.exchange-status { color: var(--signal); font-size: .84rem; line-height: 1.35; }
+.exchange-live { margin-top: 4px; color: var(--paper); font-size: .9rem; line-height: 1.35; }
+.exchange-live[data-channel="staff"] { color: #ffd5a0; }
+.exchange-live[data-channel="relay"] { color: #a6ead5; }
+.radio-exchange summary { padding: 5px 0 3px; color: var(--muted); font-size: .86rem; cursor: pointer; }
 .radio-exchange ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
 .radio-exchange li { --channel: #ffd5a0; position: relative; padding: 7px 8px 7px 25px; border: 1px solid #45554d; border-radius: 5px; background: #1c2926; }
 .radio-exchange li + li { --channel: #a6ead5; }
@@ -93,7 +105,6 @@ h1 em { color: var(--accent); font-style: normal; }
 .radio-exchange li[aria-current="true"]::before { border-color: var(--channel); background: var(--channel); box-shadow: 0 0 9px var(--channel); }
 .radio-exchange li strong { color: var(--channel); font-size: .825rem; }
 .radio-exchange li p { margin-top: 2px; font-size: .9rem; line-height: 1.45; white-space: pre-line; }
-.plan { margin-top: 12px; padding: 8px 11px; color: #ffe1b5; background: #30271f; border: 1px solid #5d4936; border-radius: 7px; font-size: .91rem; line-height: 1.52; white-space: pre-line; }
 .listen { justify-self: start; min-height: 38px; padding-block: 5px; color: var(--signal); }
 .replay:not(:empty) { margin-top: 8px; }
 .actions { margin-top: 13px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -181,6 +192,9 @@ noscript { display: block; margin: 20px; }
   .scene-head h2 { font-size: 1.48rem; }
   .scene-state { font-size: .75rem; padding: 4px 6px; }
   .scene-body { padding: 10px 10px 12px; }
+  .scene[data-exchange="true"] .picture { height: 71px; }
+  .opening-guidance { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 7px 10px 9px; }
+  .exchange-live { min-height: 2.7em; }
   .context { font-size: .855rem; }
   .dialogue { padding: 7px 8px; line-height: 1.45; }
   .dialogue p { font-size: .93rem; }
@@ -205,6 +219,8 @@ noscript { display: block; margin: 20px; }
 /* Clock evidence, broadcast controls, and the loop review. */
 .deduction, .broadcast, .recap { margin-top: 12px; padding: 12px; border: 1px solid #4b655d; border-radius: 9px; background: #1c2926; }
 .deduction h3, .broadcast h3, .recap h3 { font-size: 1.02rem; color: var(--signal); }
+#journal-reserve { width: 100%; margin-top: 7px; border-color: #bb895d; color: #ffe1b5; white-space: normal; }
+#live-console .broadcast { margin: 0 0 10px; }
 .clock-evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-block: 9px 11px; }
 .clock-evidence > div { display: grid; gap: 2px; padding: 8px; border: 1px solid #47635a; border-radius: 7px; background: #172421; }
 .clock-evidence span, .clock-evidence small { color: var(--muted); font-size: .81rem; line-height: 1.45; }

@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=14">
-  <script defer src="./locale.js?v=14"></script>
-  <script defer src="./game.js?v=14"></script>
+  <link rel="stylesheet" href="./style.css?v=15">
+  <script defer src="./locale.js?v=15"></script>
+  <script defer src="./game.js?v=15"></script>
 </head>
 <body>
   <header class="masthead">
@@ -69,6 +69,10 @@
     <div class="layout">
       <div class="play">
         <section class="scene panel" aria-labelledby="room-name">
+          <div class="opening-guidance" id="opening-guidance" hidden>
+            <p id="plan"></p>
+            <div id="opening-action"></div>
+          </div>
           <div class="picture">
             <img id="scene-image" src="./studio.webp" alt="" fetchpriority="high" width="1672" height="941">
             <div class="scene-head">
@@ -105,18 +109,25 @@
             </div>
           </div>
           <div class="scene-body">
-            <div class="narration" id="narration" tabindex="-1" aria-live="polite" aria-atomic="true">
-              <p class="context" id="context"></p>
-              <div id="story"></div>
-              <p id="event" class="scene-event" hidden></p>
-            </div>
+            <div id="featured-action" class="featured-action" hidden></div>
             <section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
               <div class="panel-heading">
                 <h3 id="radio-exchange-title" data-text="23:57 · 두 무전">23:57 · 두 무전</h3>
                 <button class="utility" id="exchange-replay" type="button" data-text="두 무전 다시 듣기">두 무전 다시 듣기</button>
               </div>
-              <ol id="exchange-lines"></ol>
+              <p class="exchange-status" id="exchange-status"></p>
+              <p class="exchange-live" id="exchange-live" role="status"></p>
+              <details id="exchange-transcript">
+                <summary data-text="전체 무전 자막">전체 무전 자막</summary>
+                <ol id="exchange-lines"></ol>
+              </details>
             </section>
+            <div id="live-console"></div>
+            <div class="narration" id="narration" tabindex="-1" aria-live="polite" aria-atomic="true">
+              <p class="context" id="context"></p>
+              <div id="story"></div>
+              <p id="event" class="scene-event" hidden></p>
+            </div>
             <section class="transmission" id="transmission" aria-labelledby="transmission-title" hidden>
               <div class="transmission-stage">
                 <img id="transmission-image" src="./studio.webp" alt="" width="1000" height="563">
@@ -131,7 +142,6 @@
               <p id="transmission-caption" role="status"></p>
               <button class="utility" id="transmission-skip" type="button" data-text="결말 보기">결말 보기</button>
             </section>
-            <div class="plan" id="plan" hidden></div>
             <section class="readiness" id="roof-reservation" aria-labelledby="roof-reservation-title" hidden>
               <h3 id="roof-reservation-title" data-text="옥상 송신기 예약">옥상 송신기 예약</h3>
               <div id="roof-reservation-status"></div>
@@ -141,7 +151,7 @@
               <ul id="readiness-status"></ul>
               <p id="readiness-next" class="note"></p>
             </section>
-            <section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
+            <div id="broadcast-slot"><section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
               <div class="panel-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
               <p id="sync-cue" class="sync-cue" hidden></p>
               <section id="routing-panel" class="routing-panel" aria-labelledby="routing-title" hidden>
@@ -166,7 +176,7 @@
               </section>
               <ul id="broadcast-channels"></ul>
               <p class="note" id="routing-status" role="status" hidden></p>
-            </section>
+            </section></div>
             <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
               <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
               <ul id="recap-outcomes" class="recap-outcomes" aria-label="방송 결과" data-label="방송 결과" hidden></ul>
@@ -254,6 +264,7 @@
         <p class="note" id="hypothesis-result" aria-live="polite"></p>
       </div>
       <div id="journal-reservation-status"></div>
+      <button type="button" class="utility" id="journal-reserve" hidden></button>
     </section>
     <section class="deduction" id="broadcast-mystery" aria-labelledby="mystery-title" hidden>
       <h3 id="mystery-title" tabindex="-1" data-text="두 밤의 마지막 편성">두 밤의 마지막 편성</h3>
