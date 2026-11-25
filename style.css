@@ -479,8 +479,11 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
 .scene[data-intro="true"] .picture::after { background: linear-gradient(180deg, #0a1417be 0%, transparent 33%, #10171bc7 100%); }
 .scene[data-intro="true"] .scene-head { inset: 13px 18px auto; align-items: start; }
 .entry-controls { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(175px, .48fr) minmax(0, 1fr); align-items: end; gap: 9px; }
-.entry-controls .receiver { grid-column: 2; grid-row: 1; }
-.entry-controls #entry-hall { grid-column: 1; grid-row: 1; }
+.entry-brief { grid-column: 1 / -1; padding: 7px 10px; border-inline-start: 2px solid var(--accent); background: #13201ef2; color: var(--paper); border-radius: 5px; font-size: .875rem; line-height: 1.42; }
+.entry-brief strong { display: block; margin-bottom: 2px; color: var(--signal); }
+#rewind-rule { margin-top: 3px; color: #ffe1b5; }
+.entry-controls .receiver { grid-column: 2; }
+.entry-controls #entry-hall { grid-column: 1; grid-row: 2; }
 .receiver { min-width: 0; border: 1px solid #789085; border-radius: 8px; background: #172421f5; padding: 8px 10px; }
 .receiver .panel-heading { margin: 0; }
 .receiver h3 { font-size: 1rem; color: var(--paper); }
@@ -500,11 +503,17 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
 .receiver[data-locked="true"] .receiver-screen { border-color: #c3915b; color: #ffe0a9; }
 .receiver-handoff { position: fixed; z-index: 20; object-fit: cover; pointer-events: none; }
 @media (max-width: 680px) {
-  .scene[data-intro="true"] .picture { min-height: 0; padding: 73px 10px 10px; }
+  .scene[data-intro="true"] .picture { min-height: 0; padding: 60px 10px 10px; }
   .scene[data-intro="true"] .scene-head { inset: 10px 11px auto; }
   .entry-controls { grid-template-columns: minmax(0, 1fr); gap: 7px; }
   .entry-controls .receiver, .entry-controls #entry-hall { grid-column: auto; grid-row: auto; }
   .receiver-bands { grid-template-columns: .95fr .85fr 1.25fr; font-size: .78rem; }
+}
+@media (max-width: 360px) {
+  .scene[data-intro="true"] .picture { padding-top: 44px; }
+  .scene[data-intro="true"] .scene-head .label { display: none; }
+  .entry-brief { padding-block: 5px; line-height: 1.35; }
+  .receiver-screen { grid-template-columns: 25px minmax(0, 1fr); gap: 5px; padding-block: 4px; font-size: .85rem; }
 }
 .signal-bars { display: flex; justify-content: center; align-items: center; gap: 3px; height: 28px; color: inherit; }
 .signal-bars i { width: 3px; height: var(--level); border-radius: 2px; background: currentColor; }

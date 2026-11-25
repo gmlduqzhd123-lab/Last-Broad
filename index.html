@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=19">
-  <script defer src="./locale.js?v=19"></script>
-  <script defer src="./game.js?v=19"></script>
+  <link rel="stylesheet" href="./style.css?v=20">
+  <script defer src="./locale.js?v=20"></script>
+  <script defer src="./game.js?v=20"></script>
 </head>
 <body>
   <header class="masthead">
@@ -88,6 +88,11 @@
               <span class="scene-state" id="room-state">방송 준비 중</span>
             </div>
             <div class="entry-controls" id="entry-controls" hidden>
+              <div class="entry-brief">
+                <strong data-text="마지막 야간 근무 · 방송 보조">마지막 야간 근무 · 방송 보조</strong>
+                <p data-text="자정 전에 순임의 원본을 찾아, 아버지가 기다리던 부두에 그 목소리를 전하세요.">자정 전에 순임의 원본을 찾아, 아버지가 기다리던 부두에 그 목소리를 전하세요.</p>
+                <p id="rewind-rule" data-text="사람과 물건은 돌아왔다. 알아낸 것은 기억에 남았다." hidden>사람과 물건은 돌아왔다. 알아낸 것은 기억에 남았다.</p>
+              </div>
               <section class="receiver" id="receiver" aria-labelledby="receiver-title">
                 <div class="panel-heading">
                   <h3 id="receiver-title" data-text="신호 맞추기">신호 맞추기</h3>
@@ -115,7 +120,7 @@
             </div>
           </div>
           <div class="scene-body">
-            <p class="late-contact" id="late-contact" role="status" hidden data-text="동시 송출 기회 종료 · 건너편 교신은 연결 중">동시 송출 기회 종료 · 건너편 교신은 연결 중</p>
+            <p class="late-contact" id="late-contact" role="status" hidden data-text="폐국 안내 시작 · 건너편 마이크는 열려 있다">폐국 안내 시작 · 건너편 마이크는 열려 있다</p>
             <div id="featured-action" class="featured-action" hidden></div>
             <div id="late-contact-actions" class="late-contact-actions" hidden></div>
             <div id="lead-radio"><section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
