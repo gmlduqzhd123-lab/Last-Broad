@@ -215,6 +215,25 @@ noscript { display: block; margin: 20px; }
 .recap p, .recap li { font-size: .9rem; line-height: 1.46; }
 .recap li { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; white-space: pre-line; }
 .recap li time { flex-shrink: 0; color: var(--signal); font: .8rem var(--mono); }
+.recap-outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-block: 9px; }
+.recap .recap-outcomes li { display: grid; align-content: start; gap: 2px; border: 1px solid #4e5f5a; border-radius: 6px; padding: 7px 8px; color: var(--muted); }
+.recap-outcomes li strong { color: var(--paper); }
+.recap .recap-outcomes li[data-sent="true"] { border-color: #628d7d; background: #213e33; color: var(--signal); }
+.mystery-evidence, .mystery-answers { display: grid; gap: 7px; margin-block: 8px; }
+.mystery-evidence li { padding: 8px; background: #182521; border: 1px solid #466258; border-radius: 6px; }
+.mystery-evidence p { font-size: .91rem; margin-top: 4px; }
+.mystery-evidence .listen { margin-top: 6px; }
+.mystery-answers .utility, .epilogue-link { white-space: normal; }
+.mystery-answers .utility { text-align: start; min-height: 44px; }
+#mystery-feedback { color: var(--signal); font-size: .9rem; line-height: 1.5; }
+#mystery-title { scroll-margin-top: 4px; }
+.epilogue-link { margin-top: 9px; border-color: #8d775c; color: #ffdfa9; }
+.epilogue-image { display: block; width: 100%; height: clamp(110px, 32vw, 205px); object-fit: cover; border-radius: 8px; margin-bottom: 9px; }
+#epilogue-transcript { margin: 10px 0; border: 1px solid #4b675b; border-left: 3px solid var(--signal); border-radius: 6px; padding: 9px; background: #1c302a; line-height: 1.55; white-space: pre-line; }
+#epilogue-replay { margin-top: 8px; }
+@media (min-width: 681px) {
+  .actions button, .ending-link, .epilogue-link { scroll-margin-top: 92px; }
+}
 .quick { display: none; }
 .share-open { min-height: 44px; }
 #intro-video { display: block; width: 100%; max-height: 50dvh; aspect-ratio: 16 / 9; border: 1px solid #4b655d; border-radius: 7px; background: #101719; }

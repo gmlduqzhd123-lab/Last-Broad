@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=6">
-  <script defer src="./locale.js?v=6"></script>
-  <script defer src="./game.js?v=6"></script>
+  <link rel="stylesheet" href="./style.css?v=7">
+  <script defer src="./locale.js?v=7"></script>
+  <script defer src="./game.js?v=7"></script>
 </head>
 <body>
   <header class="masthead">
@@ -131,6 +131,7 @@
             </section>
             <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
               <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
+              <ul id="recap-outcomes" class="recap-outcomes" aria-label="방송 결과" data-label="방송 결과" hidden></ul>
               <div class="turning-point" id="turning-point">
                 <h4 data-text="결정적 순간">결정적 순간</h4>
                 <time id="turning-time"></time>
@@ -144,6 +145,7 @@
               </details>
               <h4 data-text="다음에 확인할 질문">다음에 확인할 질문</h4>
               <p id="next-question"></p>
+              <button class="utility epilogue-link" id="recap-epilogue" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
             </section>
             <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동" data-label="장면에서 할 수 있는 행동"></div>
             <div id="replay" class="replay"></div>
@@ -164,6 +166,7 @@
         <section class="panel side-panel">
           <div class="panel-heading"><h2 data-text="결말 기록">결말 기록</h2><span id="ending-count">0 / 3</span></div>
           <ul id="ending-list" class="endings"></ul>
+          <button class="utility epilogue-link" id="epilogue-open" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
         </section>
         <button class="utility rewind" id="rewind" type="button" data-text="되감기 검토" hidden>되감기 검토</button>
         <button class="utility share-open" id="share-open" type="button" data-text="소개 영상 · 공유" aria-haspopup="dialog">소개 영상 · 공유</button>
@@ -195,12 +198,27 @@
       </div>
       <div id="journal-reservation-status"></div>
     </section>
+    <section class="deduction" id="broadcast-mystery" aria-labelledby="mystery-title" hidden>
+      <h3 id="mystery-title" tabindex="-1" data-text="두 밤의 마지막 편성">두 밤의 마지막 편성</h3>
+      <ul id="mystery-evidence" class="mystery-evidence"></ul>
+      <p id="mystery-prompt" class="note"></p>
+      <div id="mystery-answers" class="mystery-answers"></div>
+      <p id="mystery-feedback" role="status" tabindex="-1"></p>
+    </section>
     <ul id="clues" class="clues"></ul>
   </dialog>
 
   <dialog id="record" aria-labelledby="record-title">
     <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close" data-text="닫기">닫기</button></div>
     <p id="record-story"></p>
+  </dialog>
+  <dialog id="epilogue" aria-labelledby="epilogue-title">
+    <div class="panel-heading"><h2 id="epilogue-title" data-text="에필로그 · 23:52">에필로그 · 23:52</h2><button type="button" class="utility" id="epilogue-close" data-text="닫기">닫기</button></div>
+    <img class="epilogue-image" src="./studio.webp" alt="" width="1672" height="941" loading="lazy">
+    <p class="note" data-text="꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.">꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.</p>
+    <button class="utility" id="epilogue-replay" type="button" data-text="첫 교신 다시 듣기">첫 교신 다시 듣기</button>
+    <blockquote id="epilogue-transcript"></blockquote>
+    <p class="note" data-text="건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.">건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.</p>
   </dialog>
   <dialog id="share" aria-labelledby="share-title">
     <div class="panel-heading"><h2 id="share-title" data-text="소개 영상 · 공유">소개 영상 · 공유</h2><button type="button" class="utility" id="share-close" data-text="닫기">닫기</button></div>
