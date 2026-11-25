@@ -280,6 +280,23 @@ noscript { display: block; margin: 20px; }
 .pier-actions { margin-top: 9px; display: grid; gap: 7px; }
 .pier-actions .utility { min-height: 44px; white-space: normal; text-align: start; }
 #pier { scroll-padding-top: 58px; }
+.scene-tools { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.scene-tools .replay { margin: 0; }
+.scene-tools .replay:empty { display: none; }
+#settings { scroll-padding-top: 58px; }
+.settings-section { border-top: 1px solid #4b655d; padding-top: 10px; margin-top: 12px; }
+.settings-section h3, .transfer-preview h4 { margin: 0 0 7px; color: var(--signal); font-size: 1rem; }
+.mix-control { display: grid; grid-template-columns: minmax(78px, .8fr) minmax(0, 2fr) 42px; align-items: center; gap: 7px; min-height: 44px; font-size: .91rem; }
+.mix-control input { width: 100%; height: 44px; margin: 0; accent-color: var(--accent); }
+.mix-value { text-align: end; color: var(--accent); font: .85rem var(--mono); }
+.settings-buttons { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+.settings-buttons .utility, #offline-audio-toggle { white-space: normal; min-height: 44px; }
+#offline-audio-toggle, #transfer-status:not(:empty) { margin-top: 7px; }
+.transfer-preview { margin-top: 10px; border: 1px solid #5a7469; border-radius: 7px; padding: 9px; background: #172622; }
+.transfer-preview dl { display: grid; gap: 6px; margin: 8px 0; }
+.transfer-preview dl div { padding: 6px 8px; background: #233630; border-radius: 5px; overflow-wrap: anywhere; }
+.transfer-preview dt { color: var(--muted); font-size: .81rem; }
+.transfer-preview dd { margin: 2px 0 0; font-size: .92rem; }
 @media (min-width: 681px) {
   .actions button, .ending-link, .epilogue-link { scroll-margin-top: 92px; }
 }

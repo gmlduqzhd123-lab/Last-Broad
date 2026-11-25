@@ -7,6 +7,8 @@ const REPLY_WINDOW = 5;
 const TRANSMISSION_CUT = 1500;
 const TRANSMISSION_LENGTH = 7600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
+const AUDIO_CACHE = 'last-broad-audio-v1';
+const DEFAULT_MIX = { speech: 100, effects: 65, ambience: 25 };
 const PIER_LIMIT = 4;
 const routeSources = { tape: '순임의 테이프', relay: '건너편 교신' };
 const routeDestinations = { main: '한려 FM', aux: '보조 채널' };
@@ -173,14 +175,13 @@ const newRun = () => ({
   receiverBand: 0, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
 });
 
-function loadGame() {
+function restoreGame(old) {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 9, loop: 1, known: ['echo'], unlocked: [], sound: false,
+  const fresh = { version: 10, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX },
     storySolved: false, storyReplies: [], epilogueSeen: false,
     previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
   try {
-    const old = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!old || !Array.isArray(old.known) || !Array.isArray(old.unlocked)) return fresh;
     fresh.known = [...new Set(['echo', ...old.known.filter((id) => Object.hasOwn(clues, id))])];
     fresh.unlocked = [...new Set(old.unlocked.filter((id) => Object.hasOwn(endings, id)))];
@@ -205,6 +206,10 @@ function loadGame() {
       pier.completed = old.pier.completed === true || pier.answer === 'intercom';
     }
     fresh.sound = Boolean(old.sound);
+    for (const layer of Object.keys(DEFAULT_MIX)) {
+      const volume = old.mix?.[layer];
+      if (Number.isFinite(volume)) fresh.mix[layer] = Math.min(100, Math.max(0, Math.round(volume)));
+    }
     if (!requested && old.language === 'en') fresh.language = 'en';
     if (Object.hasOwn(hypotheses, old.hypothesis)) fresh.hypothesis = old.hypothesis;
     if (typeof old.nextQuestion === 'string') fresh.nextQuestion = old.nextQuestion;
@@ -246,6 +251,11 @@ function loadGame() {
   return fresh;
 }
 
+function loadGame() {
+  try { return restoreGame(JSON.parse(localStorage.getItem(SAVE_KEY))); }
+  catch { return restoreGame(null); }
+}
+
 const game = loadGame();
 let transmission = null;
 let hintState = { topic: '', level: 0, open: false };
@@ -271,30 +281,67 @@ function reservationPlan() {
 }
 
 function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch { /* In-memory play still works. */ }
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(game));
+    return true;
+  } catch { return false; }
 }
 
 let soundContext;
 let speaking;
 let playback = 0;
+let audioLevels;
+let ambience;
 const recordings = new Map();
+const effects = new Set();
+const ambienceBuffers = new Map();
+const ambienceProfiles = {
+  studio: { noise: .12, smooth: .04, hum: .075, frequency: 120, swell: .16 },
+  hall: { noise: .25, smooth: .30, hum: 0, frequency: 1, swell: .18 },
+  archive: { noise: .15, smooth: .13, hum: .04, frequency: 60, swell: .21 },
+  roof: { noise: .32, smooth: .09, hum: .015, frequency: 155, swell: .65 },
+  pier: { noise: .23, smooth: .12, hum: .014, frequency: 55, swell: .55 },
+};
 
 function audioContext() {
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
-  soundContext ||= new Audio();
+  if (!soundContext) {
+    soundContext = new Audio();
+    audioLevels = Object.fromEntries(Object.keys(DEFAULT_MIX).map((layer) => {
+      const gain = soundContext.createGain();
+      gain.gain.value = game.mix[layer] / 100;
+      gain.connect(soundContext.destination);
+      return [layer, gain];
+    }));
+  }
   if (soundContext.state === 'suspended') soundContext.resume().catch(() => {});
   return soundContext;
 }
 
+function applyMix() {
+  if (!soundContext) return;
+  for (const [layer, node] of Object.entries(audioLevels)) {
+    const foreground = (speaking && game.mix.speech) || (effects.size && game.mix.effects);
+    const duck = layer === 'ambience' && foreground ? .22 : 1;
+    const volume = game.mix[layer] / 100 * duck;
+    node.gain.setTargetAtTime(volume, soundContext.currentTime, .035);
+  }
+}
+
 function stopClip() {
   playback += 1;
-  if (speaking) speaking.stop();
+  const previous = speaking;
   speaking = null;
+  if (previous) {
+    try { previous.stop(); } catch { /* An unavailable audio node must not block play. */ }
+  }
+  applyMix();
 }
 
 async function playClip(id) {
   try {
+    if (document.hidden) return;
     const context = audioContext();
     if (!context || !voices[id]) return;
     stopClip();
@@ -312,15 +359,20 @@ async function playClip(id) {
     if (thisPlayback !== playback) return;
     const source = context.createBufferSource();
     source.buffer = buffer;
-    source.connect(context.destination);
-    source.start();
+    source.connect(audioLevels.speech);
     speaking = source;
-    source.onended = () => { if (speaking === source) speaking = null; };
+    source.onended = () => {
+      source.disconnect();
+      if (speaking === source) speaking = null;
+      applyMix();
+    };
+    applyMix();
+    source.start();
   } catch { /* Every recording has a text equivalent. */ }
 }
 
 function playEffect(id) {
-  if (!game.sound) return;
+  if (!game.sound || document.hidden || !game.mix.effects) return;
   try {
     const context = audioContext();
     if (!context) return;
@@ -335,11 +387,99 @@ function playEffect(id) {
       level.gain.exponentialRampToValueAtTime(.08, at + .019);
       level.gain.exponentialRampToValueAtTime(.001, at + .3);
       note.connect(level);
-      level.connect(context.destination);
+      level.connect(audioLevels.effects);
+      effects.add(note);
+      note.onended = () => {
+        effects.delete(note);
+        note.disconnect();
+        level.disconnect();
+        applyMix();
+      };
       note.start(at);
       note.stop(at + .31);
     });
+    if (id === 'bell' && game.run.room === 'hall') {
+      const wheels = context.createBufferSource();
+      const sample = context.createBuffer(1, 12000, 16000);
+      const samples = sample.getChannelData(0);
+      for (let i = 0; i < samples.length; i += 1) {
+        const phase = i / samples.length;
+        const envelope = Math.sin(Math.PI * phase) * (.45 + .55 * Math.sin(phase * Math.PI * 5) ** 2);
+        samples[i] = envelope * (.025 * Math.sin(i * .039) + .035 * (Math.random() * 2 - 1));
+      }
+      wheels.buffer = sample;
+      wheels.connect(audioLevels.effects);
+      effects.add(wheels);
+      wheels.onended = () => {
+        effects.delete(wheels);
+        wheels.disconnect();
+        applyMix();
+      };
+      wheels.start(context.currentTime + .46);
+    }
+    applyMix();
   } catch { /* Audio never controls access to clues. */ }
+}
+
+function stopSceneAudio() {
+  stopClip();
+  for (const effect of effects) {
+    try { effect.stop(); } catch { /* An effect may already have ended. */ }
+  }
+  effects.clear();
+  applyMix();
+}
+
+function ambienceBuffer(context, room) {
+  if (ambienceBuffers.has(room)) return ambienceBuffers.get(room);
+  const profile = ambienceProfiles[room];
+  const rate = 16000;
+  const seconds = 4;
+  const buffer = context.createBuffer(1, rate * seconds, rate);
+  const samples = buffer.getChannelData(0);
+  let seed = 73;
+  let smooth = 0;
+  for (let i = 0; i < samples.length; i += 1) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const t = i / rate;
+    smooth += (seed / 2147483648 - 1 - smooth) * profile.smooth;
+    const gust = 1 - profile.swell / 2 + Math.sin(2 * Math.PI * t / seconds) * profile.swell / 2;
+    const edge = Math.min(t / .05, (seconds - t) / .05, 1);
+    samples[i] = edge * (smooth * profile.noise * gust + Math.sin(2 * Math.PI * profile.frequency * t) * profile.hum);
+  }
+  ambienceBuffers.set(room, buffer);
+  return buffer;
+}
+
+function stopAmbience() {
+  if (!ambience) return;
+  const { source } = ambience;
+  ambience = null;
+  try { source.stop(); } catch { /* An unavailable audio node must not block play. */ }
+}
+
+function syncAmbience() {
+  const r = game.run;
+  const blockingDialog = document.querySelector('dialog[open]:not(#settings):not(#pier)');
+  const room = $('pier').open ? 'pier' : r.phase === 'play' && !r.review && r.room;
+  const next = game.sound && game.mix.ambience > 0 && !document.hidden && !blockingDialog ? room : '';
+  if (!next) { stopAmbience(); return; }
+  const context = audioContext();
+  if (!context || ambience?.room === next) return;
+  stopAmbience();
+  const source = context.createBufferSource();
+  source.buffer = ambienceBuffer(context, next);
+  source.loop = true;
+  source.connect(audioLevels.ambience);
+  source.onended = () => source.disconnect();
+  source.start();
+  ambience = { room: next, source };
+}
+
+function showGameDialog(id) {
+  stopSceneAudio();
+  $(id).showModal();
+  syncAmbience();
 }
 
 function drawSignal(node, levels) {
@@ -444,7 +584,7 @@ function observe(text, kind = 'event', args = []) {
 
 function step(message, speaker = '', action = '', args = [], logResult = false) {
   const r = game.run;
-  if (r.elapsed === 0 && r.receiverBand !== 0) stopClip();
+  stopSceneAudio();
   r.message = message;
   r.speaker = speaker;
   r.event = '';
@@ -461,7 +601,7 @@ function enter(id) {
   r.room = id;
   const cue = step(rooms[id].arrival, '', '이동 · {0}', [id]);
   if (id === 'hall' && r.elapsed >= CART_LEAVES && !r.tape) learn('departure');
-  update(cue);
+  update(cue, true);
 }
 
 function finish(id) {
@@ -515,6 +655,8 @@ function closeTransmission(stopAudio = false) {
 
 function startTransmission() {
   if (transmission || game.run.phase !== 'ending') return;
+  stopSceneAudio();
+  syncAmbience();
   const id = game.run.ending;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   transmission = { id, cut: reduced, cutTimer: null, endTimer: null };
@@ -536,6 +678,7 @@ function reviewNight() {
   if (!game.run.elapsed || transmission) return;
   if (game.run.phase === 'play' && !game.run.console && !game.run.review) {
     game.run.review = true;
+    stopSceneAudio();
     update();
   }
   $('recap').scrollIntoView({ block: 'start' });
@@ -555,7 +698,8 @@ function loopMoments(run) {
 
 function rewind() {
   if (!game.run.elapsed) return;
-  stopClip();
+  stopSceneAudio();
+  stopAmbience();
   game.nextQuestion = reviewQuestion();
   game.previousLoop = { loop: game.loop, moments: loopMoments(game.run) };
   game.loop += 1;
@@ -564,11 +708,12 @@ function rewind() {
   update('rewind');
 }
 
-function update(cue = '') {
+function update(cue = '', playSceneClip = false) {
   save();
   render();
+  syncAmbience();
   if (cue) playEffect(cue);
-  if (game.sound && game.run.clip) playClip(game.run.clip);
+  if (playSceneClip && game.sound && game.run.clip) playClip(game.run.clip);
   $('narration').focus({ preventScroll: true });
   if (game.run.phase !== 'play' || game.run.elapsed === 0) {
     document.querySelector('main').scrollTop = 0;
@@ -583,6 +728,7 @@ function update(cue = '') {
 }
 
 function openConsole(mode) {
+  stopSceneAudio();
   game.run.console = mode;
   game.run.consoleReady = false;
   game.run.routes = emptyRoutes();
@@ -604,7 +750,7 @@ function consoleActions() {
       disabled: !routesReady(r.routes), run: () => {
       if (!routesReady(r.routes) || r.phase !== 'play' || r.consoleReady || r.elapsed !== REPLY_WINDOW) return;
       r.consoleReady = true;
-      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', '동시 송출 신호 보내기'));
+      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', '동시 송출 신호 보내기'), true);
       focusConsoleControl();
     } });
   } else {
@@ -640,7 +786,7 @@ function choices() {
       if (clue) learn(clue);
       if (change) change();
       if (id !== 'wait') r.used.push(id);
-      update(step(message, speaker, title, [], Boolean(clue || speaker)));
+      update(step(message, speaker, title, [], Boolean(clue || speaker)), true);
     }, primary);
   };
   const finalChoice = (id, title, detail, primary) =>
@@ -721,7 +867,7 @@ function choices() {
             r.tuneAt = plan.proposed;
             update(step(plan.pending ? '송신기의 실제 예약을 바꿨다.' : '채널을 예약했다. 송신기가 그 시각에 건너편 주파수를 찾는다.',
               '', plan.pending ? '교신 예약 변경 · {0} → {1}' : '교신 예약 확정 · {0}',
-              plan.pending ? [time(plan.actual), time(plan.proposed)] : [time(plan.proposed)]));
+              plan.pending ? [time(plan.actual), time(plan.proposed)] : [time(plan.proposed)]), true);
           }, true);
       } else if (plan.proposed && !plan.actual) {
         offer('review-clocks', '수첩에서 시각 다시 확인', '이번 밤의 예약 시각을 지났습니다.', openJournal, false, '시간 유지');
@@ -868,7 +1014,7 @@ function renderScene() {
     watch.addEventListener('click', startTransmission);
     replay.unshift(watch);
   }
-  $('replay').hidden = Boolean(transmission);
+  $('scene-tools').hidden = Boolean(transmission);
   $('replay').replaceChildren(...replay);
   const plan = nextPlan();
   const lastMoment = intro ? game.previousLoop?.moments.at(-1) : null;
@@ -1253,7 +1399,7 @@ function render() {
       button.addEventListener('click', () => {
         $('record-title').textContent = t(ending.title);
         $('record-story').textContent = t(endingFor(id, game.storyReplies.includes(id)).story);
-        $('record').showModal();
+        showGameDialog('record');
       });
       item.append(button);
     }
@@ -1408,7 +1554,7 @@ function openJournal() {
     }
     return item;
   }));
-  $('journal').showModal();
+  showGameDialog('journal');
 }
 
 function openMystery() {
@@ -1422,9 +1568,8 @@ function openEpilogue() {
   game.epilogueSeen = true;
   save();
   $('pier-open').hidden = false;
-  stopClip();
   $('epilogue-transcript').textContent = t(epilogueTranscript);
-  $('epilogue').showModal();
+  showGameDialog('epilogue');
   if (game.sound) playClip('epilogue');
 }
 
@@ -1478,7 +1623,7 @@ function takePierAction(id) {
     }
   } else return;
   save();
-  stopClip();
+  stopSceneAudio();
   renderPier();
   $('pier-narration').focus({ preventScroll: true });
   $('pier-narration').scrollIntoView({ block: 'nearest' });
@@ -1488,9 +1633,8 @@ function takePierAction(id) {
 function openPier() {
   if (!pierUnlocked() || transmission) return;
   if ($('epilogue').open) $('epilogue').close();
-  stopClip();
   renderPier();
-  $('pier').showModal();
+  showGameDialog('pier');
 }
 
 const shareMedia = {
@@ -1511,7 +1655,187 @@ function openShare() {
   const videoSource = location.hostname === target.hostname
     ? new URL(media.video, 'https://gmlduqzhd123-lab.github.io/Last-Broad/').href : media.video;
   if (video.getAttribute('src') !== videoSource) video.setAttribute('src', videoSource);
-  $('share').showModal();
+  showGameDialog('share');
+}
+
+const transferFormat = 'hallyeo-fm-save';
+const transferLimit = 512 * 1024;
+let pendingTransfer = null;
+let transferRead = 0;
+let audioPackReady = false;
+let audioPackAvailable = false;
+let audioPackBusy = false;
+let audioPackCheck = 0;
+
+function renderMixSettings() {
+  for (const input of $('settings').querySelectorAll('[data-mix]')) {
+    const value = game.mix[input.dataset.mix];
+    input.value = value;
+    input.nextElementSibling.textContent = `${value}%`;
+    input.setAttribute('aria-valuetext', `${value}%`);
+  }
+}
+
+function offlineAudioSupported() {
+  return location.protocol !== 'file:' && 'caches' in window && 'serviceWorker' in navigator;
+}
+
+function renderOfflineAudio(message = '') {
+  const button = $('offline-audio-toggle');
+  button.hidden = !audioPackAvailable;
+  button.disabled = audioPackBusy;
+  button.textContent = t(audioPackReady ? '저장된 음성 삭제' : '오프라인 음성 저장');
+  const status = message || (location.protocol === 'file:' ? '이 HTML 파일에 음성이 포함되어 있습니다.'
+    : !audioPackAvailable ? '이 브라우저에서 오프라인 음성 저장을 사용할 수 없습니다.'
+      : audioPackReady ? '음성 저장 완료. 인터넷 연결 없이 녹음을 재생할 수 있습니다.'
+        : '녹음 파일을 내려받습니다. 필요한 공간은 약 4MB입니다.');
+  $('offline-audio-status').textContent = t(status);
+}
+
+async function refreshOfflineAudio() {
+  if (audioPackBusy) return;
+  const check = ++audioPackCheck;
+  let available = false;
+  let ready = false;
+  if (offlineAudioSupported()) {
+    try {
+      available = Boolean((await navigator.serviceWorker.getRegistration())?.active);
+      if (available) {
+        const stored = await Promise.all(Object.values(voices).map((path) => caches.match(path, { cacheName: AUDIO_CACHE })));
+        ready = stored.every(Boolean);
+      }
+    } catch {
+      available = false;
+    }
+  }
+  if (check !== audioPackCheck) return;
+  audioPackAvailable = available;
+  audioPackReady = ready;
+  renderOfflineAudio();
+}
+
+async function toggleOfflineAudio() {
+  if (audioPackBusy || !audioPackAvailable) return;
+  audioPackCheck += 1;
+  audioPackBusy = true;
+  let failure = '';
+  const removing = audioPackReady;
+  renderOfflineAudio(removing ? '저장한 음성을 지우는 중입니다.' : '오프라인 음성을 저장하는 중입니다.');
+  try {
+    if (removing) {
+      await caches.delete(AUDIO_CACHE);
+      recordings.clear();
+      audioPackReady = false;
+    } else {
+      const cache = await caches.open(AUDIO_CACHE);
+      await cache.addAll(Object.values(voices));
+      audioPackReady = true;
+    }
+  } catch {
+    failure = removing ? '저장한 음성을 지우지 못했습니다. 다시 시도해 주세요.'
+      : '음성을 저장하지 못했습니다. 연결과 저장 공간을 확인한 뒤 다시 시도해 주세요.';
+  } finally {
+    audioPackBusy = false;
+    renderOfflineAudio(failure || (removing ? '이 기기에서 저장한 음성을 지웠습니다.' : ''));
+  }
+}
+
+function exportProgress() {
+  const { sound, mix, language, ...data } = game;
+  const savedAt = new Date().toISOString();
+  const file = new Blob([JSON.stringify({ format: transferFormat, version: 1, savedAt, data }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `hallyeo-fm-${savedAt.slice(0, 10)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  $('transfer-status').textContent = t('진행 파일을 만들었습니다.');
+}
+
+function importedGame(file) {
+  const data = file?.data;
+  const run = data?.run;
+  if (file?.format !== transferFormat || file.version !== 1 || !data || !run) return null;
+  if (!Number.isInteger(data.version) || data.version < 2 || data.version > game.version
+    || !Number.isSafeInteger(data.loop) || data.loop < 1
+    || !Array.isArray(data.known) || !data.known.every((id) => typeof id === 'string' && Object.hasOwn(clues, id))
+    || !Array.isArray(data.unlocked) || !data.unlocked.every((id) => typeof id === 'string' && Object.hasOwn(endings, id))) return null;
+  if (!Object.hasOwn(rooms, run.room) || !Number.isInteger(run.elapsed) || run.elapsed < 0 || run.elapsed > LIMIT
+    || !['play', 'expired', 'ending'].includes(run.phase) || (run.phase === 'play' ? run.elapsed === LIMIT : run.elapsed !== LIMIT)
+    || !['', 'carried', 'delivered'].includes(run.tape) || !['', 'voices', 'signal', 'both'].includes(run.console)
+    || (run.phase === 'ending' && !Object.hasOwn(endings, run.ending))
+    || !Number.isInteger(run.tuneAt) || run.tuneAt < 0 || run.tuneAt > LIMIT) return null;
+  if (!['message', 'speaker', 'event', 'clip'].every((field) => typeof run[field] === 'string' && run[field].length <= 3000)
+    || (run.clip && !Object.hasOwn(voices, run.clip))
+    || !Array.isArray(run.used) || !run.used.every((id) => typeof id === 'string')
+    || !Array.isArray(run.log) || run.log.length > 200 || !run.log.every((item) => item
+      && Number.isInteger(item.minute) && item.minute >= 0 && item.minute <= LIMIT
+      && typeof item.text === 'string' && item.text.length <= 3000
+      && Array.isArray(item.args) && item.args.every((value) => typeof value === 'string'))) return null;
+  if (!['courier', 'dj', 'linked', 'review', 'consoleReady', 'syncMissed'].every((field) => typeof run[field] === 'boolean')) return null;
+  if (run.phase === 'play' && run.console === 'both' && (!run.dj || !run.linked || run.tape !== 'delivered'
+    || run.elapsed !== REPLY_WINDOW + Number(run.consoleReady))) return null;
+  return restoreGame(data);
+}
+
+function renderTransfer() {
+  $('transfer-preview').hidden = !pendingTransfer;
+  if (!pendingTransfer) return;
+  $('transfer-rounds').replaceChildren(...[['이 기기', game], ['불러온 파일', pendingTransfer]].map(([name, source]) => {
+    const row = element('div');
+    const description = `${fmt('{0}회차', source.loop)} · ${time(source.run.elapsed)} · ${t(rooms[source.run.room].name)}`;
+    row.append(element('dt', name), element('dd', description));
+    return row;
+  }));
+  const newClues = pendingTransfer.known.filter((id) => !game.known.includes(id)).length;
+  const newEndings = pendingTransfer.unlocked.filter((id) => !game.unlocked.includes(id)).length;
+  $('transfer-summary').textContent = fmt('두 기록을 합치면 단서 {0}개와 결말 {1}개가 추가됩니다.', newClues, newEndings);
+}
+
+async function readProgress(file) {
+  const attempt = ++transferRead;
+  pendingTransfer = null;
+  renderTransfer();
+  if (!file) return;
+  $('transfer-status').textContent = t('진행 파일을 읽는 중입니다.');
+  let incoming = null;
+  if (file.size <= transferLimit) {
+    try { incoming = importedGame(JSON.parse(await file.text())); } catch { /* An invalid file leaves the current game intact. */ }
+  }
+  if (attempt !== transferRead || !$('settings').open) return;
+  pendingTransfer = incoming;
+  $('transfer-status').textContent = incoming ? '' : t('이 진행 파일을 읽을 수 없습니다. 이 기기의 진행 기록은 그대로입니다.');
+  renderTransfer();
+  if (incoming) {
+    $('transfer-preview-title').focus({ preventScroll: true });
+    $('transfer-preview').scrollIntoView({ block: 'start' });
+  }
+}
+
+function mergeProgress(useFileRun) {
+  if (!pendingTransfer) return;
+  const incoming = pendingTransfer;
+  const selected = useFileRun ? incoming : game;
+  const union = (current, transferred) => [...new Set([...current, ...transferred])];
+  stopSceneAudio();
+  Object.assign(game, {
+    loop: selected.loop, run: selected.run, hypothesis: selected.hypothesis,
+    previousLoop: selected.previousLoop, nextQuestion: selected.nextQuestion,
+    known: union(game.known, incoming.known), unlocked: union(game.unlocked, incoming.unlocked),
+    matches: union(game.matches, incoming.matches), storyReplies: union(game.storyReplies, incoming.storyReplies),
+    storySolved: game.storySolved || incoming.storySolved, epilogueSeen: game.epilogueSeen || incoming.epilogueSeen,
+    pier: { ...selected.pier, completed: game.pier.completed || incoming.pier.completed },
+  });
+  pendingTransfer = null;
+  renderTransfer();
+  render();
+  syncAmbience();
+  $('transfer-status').textContent = t(save() ? '선택한 회차를 이어 할 수 있습니다. 단서와 결말을 합쳤습니다.'
+    : '단서와 결말을 이번 세션에 합쳤습니다. 기기 저장이 어려우면 진행 파일을 내보내세요.');
+  $('import-save').focus();
 }
 
 $('pair-evidence').addEventListener('click', pairEvidence);
@@ -1539,7 +1863,6 @@ $('recap-epilogue').addEventListener('click', openEpilogue);
 $('epilogue-close').addEventListener('click', () => $('epilogue').close());
 $('epilogue-replay').addEventListener('click', () => playClip('epilogue'));
 $('epilogue').addEventListener('close', () => {
-  stopClip();
   renderRecap();
   if (document.activeElement === document.body && !$('recap').hidden) $('recap').focus({ preventScroll: true });
 });
@@ -1547,9 +1870,63 @@ $('pier-open').addEventListener('click', openPier);
 $('pier-from-epilogue').addEventListener('click', openPier);
 $('pier-close').addEventListener('click', () => $('pier').close());
 $('pier').addEventListener('close', () => {
-  stopClip();
   if (document.activeElement === document.body && !$('pier-open').hidden) $('pier-open').focus({ preventScroll: true });
 });
+$('settings-open').addEventListener('click', () => {
+  renderMixSettings();
+  showGameDialog('settings');
+  refreshOfflineAudio();
+});
+$('settings-close').addEventListener('click', () => $('settings').close());
+$('settings').addEventListener('close', () => {
+  transferRead += 1;
+  pendingTransfer = null;
+  renderTransfer();
+  $('transfer-status').textContent = '';
+});
+$('settings').addEventListener('input', ({ target }) => {
+  if (!target.matches('input[data-mix]')) return;
+  game.mix[target.dataset.mix] = Number(target.value);
+  applyMix();
+  syncAmbience();
+  renderMixSettings();
+  save();
+});
+$('offline-audio-toggle').addEventListener('click', toggleOfflineAudio);
+if (offlineAudioSupported()) navigator.serviceWorker.addEventListener('controllerchange', () => {
+  if ($('settings').open) refreshOfflineAudio();
+});
+$('export-save').addEventListener('click', exportProgress);
+$('import-save').addEventListener('click', () => $('save-file').click());
+$('save-file').addEventListener('change', ({ target }) => {
+  readProgress(target.files[0]);
+  target.value = '';
+});
+$('keep-device-run').addEventListener('click', () => mergeProgress(false));
+$('use-file-run').addEventListener('click', () => mergeProgress(true));
+$('cancel-transfer').addEventListener('click', () => {
+  pendingTransfer = null;
+  renderTransfer();
+  $('transfer-status').textContent = t('불러오기를 취소했습니다.');
+  $('import-save').focus();
+});
+for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
+  if (!document.querySelector('dialog[open]')) stopSceneAudio();
+  syncAmbience();
+});
+
+function pauseHiddenAudio() {
+  stopSceneAudio();
+  stopAmbience();
+  $('intro-video').pause();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pauseHiddenAudio();
+  else syncAmbience();
+});
+window.addEventListener('pagehide', pauseHiddenAudio);
+window.addEventListener('pageshow', () => { if (soundContext) syncAmbience(); });
 $('rewind').addEventListener('click', reviewNight);
 $('routing-panel').addEventListener('change', chooseRoute);
 $('hint-toggle').addEventListener('click', () => {
@@ -1591,7 +1968,8 @@ $('sound').addEventListener('click', () => {
   save();
   $('sound').textContent = t(game.sound ? '소리 끄기' : '소리 켜기');
   $('sound').setAttribute('aria-pressed', String(game.sound));
-  if (!game.sound) stopClip();
+  syncAmbience();
+  if (!game.sound) stopSceneAudio();
   else if (transmission) playClip(transmissionClip());
   else if (game.run.elapsed === 0 && game.run.receiverBand !== 0) listenToBand();
   else if (game.run.elapsed === 0) playClip('opening');
