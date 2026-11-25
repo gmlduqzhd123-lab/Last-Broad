@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=16">
-  <script defer src="./locale.js?v=16"></script>
-  <script defer src="./game.js?v=16"></script>
+  <link rel="stylesheet" href="./style.css?v=17">
+  <script defer src="./locale.js?v=17"></script>
+  <script defer src="./game.js?v=17"></script>
 </head>
 <body>
   <header class="masthead">
@@ -109,7 +109,9 @@
             </div>
           </div>
           <div class="scene-body">
+            <p class="late-contact" id="late-contact" role="status" hidden data-text="동시 송출 기회 종료 · 건너편 교신은 연결 중">동시 송출 기회 종료 · 건너편 교신은 연결 중</p>
             <div id="featured-action" class="featured-action" hidden></div>
+            <div id="late-contact-actions" class="late-contact-actions" hidden></div>
             <div id="lead-radio"><section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
               <div class="panel-heading">
                 <h3 id="radio-exchange-title" data-text="23:57 · 두 무전">23:57 · 두 무전</h3>
@@ -206,6 +208,10 @@
                 </div>
               </section>
               <div id="console-action"></div>
+              <details class="wiring-note" id="wiring-note" hidden>
+                <summary data-text="발견한 연결표 보기">발견한 연결표 보기</summary>
+                <dl id="wiring-note-lines"></dl>
+              </details>
               <p class="note" id="routing-status" role="status" hidden></p>
               <div id="console-transcript"></div>
               <ul id="broadcast-channels"></ul>
@@ -267,17 +273,23 @@
     <p class="note" data-text="단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.">단서와 녹음은 다음 밤에도 남습니다. 읽고 듣는 동안 시간은 멈춥니다.</p>
     <section class="deduction" id="deduction" aria-labelledby="deduction-title" hidden>
       <h3 id="deduction-title" data-text="두 밤의 시계">두 밤의 시계</h3>
+      <div class="clock-recovery" id="clock-recovery" tabindex="-1" hidden>
+        <p id="failed-time"></p>
+        <ul id="paired-clocks"></ul>
+      </div>
+      <div id="retry-hypothesis"></div>
+      <button type="button" class="utility" id="journal-airlog" data-text="자료실로 이동해 방송 일지 확인 · 1행동" hidden>자료실로 이동해 방송 일지 확인 · 1행동</button>
       <p class="note evidence-instruction" data-text="두 기록에서 같은 사건을 하나씩 골라 연결하세요.">두 기록에서 같은 사건을 하나씩 골라 연결하세요.</p>
       <div id="clock-evidence" class="clock-evidence"></div>
       <button type="button" class="utility" id="pair-evidence" data-text="선택한 두 기록 연결">선택한 두 기록 연결</button>
       <p class="note" id="pair-result" aria-live="polite"></p>
-      <div id="hypothesis-stage" hidden>
+      <div id="normal-hypothesis"><div id="hypothesis-stage" hidden>
         <fieldset>
           <legend data-text="두 시계는 어떤 관계일까요?">두 시계는 어떤 관계일까요?</legend>
           <div id="hypotheses" class="hypotheses"></div>
         </fieldset>
         <p class="note" id="hypothesis-result" aria-live="polite"></p>
-      </div>
+      </div></div>
       <div id="journal-reservation-status"></div>
       <button type="button" class="utility" id="journal-reserve" hidden></button>
     </section>

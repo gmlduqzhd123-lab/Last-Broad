@@ -191,6 +191,7 @@ const newRun = () => ({
   review: false, console: '', consoleReady: false, syncMissed: false, log: [], routes: emptyRoutes(),
   receiverBand: 0, receiverTuned: false, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
   intent: '',
+  clockReviewed: false,
 });
 
 function restoreGame(old) {
@@ -239,6 +240,7 @@ function restoreGame(old) {
       && (previous.phase !== 'ending' || Object.hasOwn(endings, previous.ending))) {
       fresh.run = { ...newRun(), ...previous };
       if (!['contact', 'connect'].includes(fresh.run.intent)) fresh.run.intent = '';
+      fresh.run.clockReviewed = previous.clockReviewed === true;
       if (!['voices', 'signal', 'both'].includes(fresh.run.console)) fresh.run.console = '';
       fresh.run.routes = emptyRoutes();
       if (previous.console === 'both') {
@@ -301,6 +303,49 @@ function reservationPlan() {
   const canApply = r.phase === 'play' && !r.review && !r.console
     && (!actual || pending) && proposed > r.elapsed && proposed !== actual;
   return { proposed, actual, pending, canApply };
+}
+
+function latestFailedReservation() {
+  const r = game.run;
+  if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) return r.tuneAt;
+  return r.tuneAt ? 0 : game.previousLoop?.moments.find(({ id }) => id === 'contactMissed')?.minute ?? 0;
+}
+
+function failedReservationMinute() {
+  const failed = latestFailedReservation();
+  const r = game.run;
+  return r.tuneAt || !r.clockReviewed || reservationPlan().proposed === failed ? failed : 0;
+}
+
+const canRadioCourier = () => knows('staffCall') && knows('label');
+
+function connectionRoute() {
+  const r = game.run;
+  const plan = reservationPlan();
+  if (r.intent !== 'connect' || r.linked || !knows('routing') || !knows('label') || !plan.proposed) return null;
+  const steps = [];
+  let room = r.room;
+  const move = (target) => {
+    if (room === target) return;
+    steps.push({ id: `plan-${target}`, room: target });
+    room = target;
+  };
+  const radio = canRadioCourier();
+  const canAskHere = room === 'hall' && !radio && !r.courier;
+  if (canAskHere) steps.push({ id: 'assign-courier' });
+  if (!r.dj) {
+    move('studio');
+    steps.push({ id: 'assign-dj' });
+  }
+  if (!r.courier && !canAskHere) {
+    move(radio ? 'studio' : 'hall');
+    steps.push({ id: radio ? 'radio-courier' : 'assign-courier' });
+  }
+  if (!plan.actual || plan.canApply) {
+    move('roof');
+    steps.push({ id: 'reserve-relay' });
+  } else if (room !== 'roof' && room !== 'studio') move('roof');
+  return { next: steps[0], feasible: r.elapsed + steps.length <= REPLY_WINDOW };
 }
 
 function save() {
@@ -1105,9 +1150,22 @@ function choices() {
   const canJoin = r.dj && r.tape === 'delivered' && r.linked && r.elapsed === REPLY_WINDOW;
   const joinDetail = '23:57에 신호를 보내세요. 마지막 송출까지 2행동이 필요합니다.';
   const directReply = r.syncMissed && r.linked && r.room !== 'roof' && r.elapsed < LIMIT - 1;
+  const failed = failedReservationMinute();
+  if (failed) offer('recheck-clock', '수첩에서 시차 다시 비교', fmt('지난 {0} 예약을 종소리 기록과 비교합니다.', time(failed)), openClockReview, true, '시간 유지');
+  const route = connectionRoute();
+  if (route?.feasible && route.next?.room) {
+    const titles = { hall: '복도로 이동해 재호 찾기', studio: '역할을 나누러 방송실로', roof: '예약하러 옥상 송신실로' };
+    const { id, room } = route.next;
+    offer(id, titles[room], '', () => enter(room), true);
+  }
+  if (route && !route.feasible) {
+    const next = canRadioCourier() ? '연결표 확보. 다음 회차에는 무전으로 재호에게 원본을 맡기세요.'
+      : '연결표 확보. 다음 회차에는 윤서에게 방송실을 먼저 맡기세요.';
+    offer('prepare-rewind', '다음 회차 준비하기', next, reviewNight, true, '시간 유지');
+  }
 
   if (r.room === 'studio') {
-    if (r.elapsed === 1) {
+    if (r.elapsed === 1 && route?.next?.id !== 'plan-hall') {
       offer('go-hall', '복도로 가서 수레 확인', '운반 상자에 원본이 섞였을지도 모릅니다.', () => enter('hall'), true);
     }
     scene('ask-dj', '윤서에게 목소리 확인', '눈앞의 윤서도 방금 그 소리를 들었을까요?', 'rundown',
@@ -1117,7 +1175,7 @@ function choices() {
         '“좋아요. 원본이 들어오면 제가 준비해 둘게요. 당신이 옥상에서 신호를 주면 돼요.”', '윤서', r.elapsed === 0 && game.loop > 1,
         () => { r.dj = true; });
     }
-    if (knows('staffCall') && knows('label') && r.elapsed < CART_LEAVES && !r.courier && !r.tape) {
+    if (canRadioCourier() && r.elapsed < CART_LEAVES && !r.courier && !r.tape) {
       scene('radio-courier', '무전으로 재호에게 부탁', '방송실에서 파란 스티커의 원본 운반을 맡깁니다. 23:57에 도착합니다.', null,
         '“현관, 응답. 파란 스티커 붙은 상자죠? 찾아서 윤서 씨 콘솔에 올려 둘게요.”', '재호 · 직원 무전', false,
         () => { r.courier = true; r.courierByRadio = true; });
@@ -1166,9 +1224,6 @@ function choices() {
     scene('read-airlog', '건너편 방송 일지 읽기', '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
       '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”\n뒷면 편성표에는 순임의 인터뷰 칸이 비어 있다.',
       '', false, () => learn('remoteSlot'));
-    if (r.intent === 'connect' && knows('routing')) {
-      offer('plan-studio', '역할을 나누러 방송실로', '방송실에서 윤서에게 송출 준비를 맡길 수 있습니다.', () => enter('studio'), true);
-    }
   }
 
   if (r.room === 'roof') {
@@ -1178,7 +1233,7 @@ function choices() {
       const plan = reservationPlan();
       if (!plan.proposed && !plan.actual) {
         offer('compare', '수첩에서 증거 연결하기', '두 시계에서 같은 사건을 찾고 시차 가설을 세웁니다.', openJournal, true, '시간 유지');
-      } else if (plan.canApply) {
+      } else if (plan.canApply && plan.proposed !== failed) {
         offer('reserve-relay', plan.pending ? '실제 예약 변경하기' : '보조 채널 예약하기',
           plan.pending ? fmt('{0} 예약을 {1}로 바꿉니다.', time(plan.actual), time(plan.proposed))
             : fmt('이쪽 시계 {0}에 연결을 시도합니다.', time(plan.proposed)), reserveRelay, true);
@@ -1187,7 +1242,8 @@ function choices() {
       }
     }
     if (r.linked) {
-      finalChoice('signal', '건너편 윤서에게 응답', '옥상에서 그 목소리에 남은 방송 시간을 씁니다.', !canJoin);
+      finalChoice('signal', '건너편 윤서에게 응답', r.syncMissed ? '콘솔을 연 뒤 마이크에 1행동을 씁니다.'
+        : '옥상에서 그 목소리에 남은 방송 시간을 씁니다.', !canJoin);
       if (!game.storySolved && mysteryEvidence.every(knows)) {
         offer('compare-schedules', '편성표와 호출 대조하기', '건너편 윤서가 순임의 원본을 찾는 이유를 확인합니다.', openMystery, false, '시간 유지');
       }
@@ -1266,8 +1322,12 @@ function plannedObjective(r) {
   if (r.linked) {
     return r.dj && r.tape === 'delivered' && r.elapsed === REPLY_WINDOW ? '지금 윤서에게 동시 송출 신호를 보낸다' : '건너편 호출에 응답한다';
   }
+  if (failedReservationMinute()) return '두 시계의 차이를 다시 확인한다';
   if (r.intent === 'connect') {
     if (!knows('routing')) return '자료실에서 두 채널 연결표를 찾는다';
+    if (!knows('label')) return '미라에게 원본의 표식을 확인한다';
+    const route = connectionRoute();
+    if (route && !route.feasible) return '다음 회차에 방송실과 옥상의 일을 나눈다';
     if (!r.courier || !r.dj) {
       if (r.elapsed >= CART_LEAVES) return '다음 회차에 방송실과 옥상의 일을 나눈다';
       if (!r.courier && !r.dj) return '재호에게 원본을, 윤서에게 방송실을 맡긴다';
@@ -1285,6 +1345,11 @@ function plannedObjective(r) {
 function openingPlan() {
   if (game.loop < 2 || !openingReceiverHere()) return null;
   const move = (goal, question, room, title, intent) => ({ goal, question, intent, action: { id: room, title, cost: '1행동', run: () => enter(room) } });
+  const failed = failedReservationMinute();
+  if (failed) return { goal: '두 시계의 차이를 다시 확인한다', question: fmt('지난 {0} 예약에서는 잡음만 들렸습니다.', time(failed)),
+    option: 'recheck-clock', intent: 'contact' };
+  if (game.run.clockReviewed && reservationPlan().proposed) return move('새 가설을 옥상 송신기에서 시험한다',
+    '수첩에서 다시 계산한 시각을 옥상에서 예약하세요.', 'roof', '옥상 송신실로 이동', 'contact');
   if (epilogueUnlocked() && !game.epilogueSeen) {
     return { goal: '첫 교신의 원본을 확인한다', question: '23:52의 첫 교신에서 어떤 목소리가 들렸을까요?',
       action: { id: 'epilogue', title: '첫 교신의 원본 듣기', cost: '시간 유지', run: openEpilogue } };
@@ -1293,9 +1358,11 @@ function openingPlan() {
   const last = game.previousLoop?.moments.at(-1)?.id;
   if (!game.unlocked.includes('both') && (game.unlocked.includes('signal') || last === 'syncMissed' || last === 'cue')) {
     if (!knows('routing')) return move('두 방송을 이을 방법을 찾는다', '두 채널은 어디에서 연결할 수 있을까요?', 'archive', '자료실로 이동', 'connect');
-    if (knows('staffCall') && knows('label')) return { goal: '방송실과 옥상의 일을 나눈다',
+    if (!knows('label')) return move('미라에게 원본의 표식을 확인한다', '재호가 어느 상자에서 원본을 꺼내야 할까요?', 'archive', '자료실로 이동', 'connect');
+    if (canRadioCourier()) return { goal: '방송실과 옥상의 일을 나눈다',
       question: '내가 옥상에 있는 동안 누가 원본을 옮길까요?', option: 'radio-courier', intent: 'connect' };
-    return move('재호에게 원본 운반을 맡긴다', '내가 옥상에 있는 동안 누가 원본을 옮길까요?', 'hall', '복도로 이동', 'connect');
+    return { goal: '윤서에게 방송실을 먼저 맡긴다', question: '방송실을 맡긴 뒤 복도의 재호를 만나면 제시간에 옥상에 갈 수 있습니다.',
+      option: 'assign-dj', intent: 'connect' };
   }
   if (!game.unlocked.includes('signal') && (game.unlocked.includes('voices') || knows('relay'))) {
     return move('건너편 윤서의 다음 호출을 찾는다', '건너편 윤서는 언제 다시 부를까요?', 'roof', '옥상 송신실로 이동', 'contact');
@@ -1398,7 +1465,8 @@ function renderScene() {
   scene.dataset.result = String(!transmission && r.phase !== 'play');
   $('solo-call').hidden = !liveCall || exchange;
   $('solo-caption').textContent = t(callQuestion);
-  const event = liveCall ? r.event.split('\n').filter((line) => ![callWords, callQuestion].includes(line) && (!exchange || line !== tapeDelivered)).join('\n') : r.event;
+  const event = liveCall ? r.event.split('\n').filter((line) => ![callWords, callQuestion].includes(line)
+    && (!exchange || line !== tapeDelivered) && (r.console || line !== syncMissed)).join('\n') : r.event;
   $('event').hidden = !event;
   $('event').textContent = t(event);
   renderExchange(exchange);
@@ -1441,6 +1509,14 @@ function renderBroadcast() {
   const onAir = r.phase === 'ending';
   const isDual = r.console === 'both';
   const routing = isDual && r.phase === 'play' && !r.consoleReady;
+  const wiringNote = $('wiring-note');
+  wiringNote.hidden = !routing || !knows('routing');
+  if (wiringNote.hidden) wiringNote.open = false;
+  else $('wiring-note-lines').replaceChildren(...Object.entries(correctRoutes).map(([source, destination]) => {
+    const row = element('div');
+    row.append(element('dt', routeSources[source]), element('dd', routeDestinations[destination]));
+    return row;
+  }));
   $('routing-panel').hidden = !routing;
   $('routing-status').hidden = !routing;
   if (routing) {
@@ -1552,7 +1628,6 @@ function renderReadiness() {
   }));
   let next = '';
   if (r.consoleReady) next = '동시 송출 신호를 보냈습니다. 마이크를 열면 방송이 시작됩니다.';
-  else if (r.syncMissed) next = '동시 송출 기회는 지났지만, 옥상에서 건너편에 답할 수 있습니다.';
   else if (r.dj && r.tape === 'delivered' && r.linked && r.elapsed === REPLY_WINDOW) next = '세 가지 준비가 끝났습니다. 지금 두 방송을 잇고 신호를 보내세요.';
   $('readiness-next').hidden = !next;
   $('readiness-next').textContent = t(next);
@@ -1777,18 +1852,30 @@ function renderActions(options) {
   $('console-action').replaceChildren(...(consoleCommand ? [actionButton(consoleCommand)] : []));
   const recapOptions = r.review || r.phase !== 'play' ? options : [];
   $('recap-actions').replaceChildren(...recapOptions.map(actionButton));
-  if (r.phase === 'play' && !r.review && !openingAction) {
-    if (!r.console && hasLiveCall()) featured = available('both') || available('signal') || available('voices') || available('go-reply');
-    else if (!r.console && r.room === 'hall' && r.elapsed < CART_ARRIVES) featured = available('wait');
-    else if (!r.console && r.room === 'hall') featured = available('carry-to-studio') || available('search-cart');
-    else if (!r.console && r.room === 'roof') featured = available('reserve-relay') || available('wait-event')
+  const showLate = r.phase === 'play' && r.syncMissed && !r.review && !r.console;
+  const lateAlt = showLate && available('go-reply') ? available('voices') : null;
+  const lateRewind = { title: '다음 회차 준비하기', cost: '시간 유지', run: reviewNight };
+  if (r.phase === 'play' && !r.review && !r.console && !openingAction) {
+    const planned = connectionRoute();
+    if (showLate) featured = available('signal') || available('go-reply') || available('voices') || lateRewind;
+    else if (hasLiveCall()) featured = available('both') || available('signal') || available('voices');
+    else if (available('recheck-clock')) featured = (r.room === 'archive' && !knows('airlog') && available('read-airlog')) || available('recheck-clock');
+    else if (planned && !planned.feasible) featured = available('prepare-rewind');
+    else if (planned?.next) featured = available(planned.next.id);
+    if (!featured && r.room === 'hall') featured = r.elapsed < CART_ARRIVES ? available('wait') : available('carry-to-studio') || available('search-cart');
+    if (!featured && r.room === 'roof') featured = available('reserve-relay') || available('wait-event')
       || (r.intent === 'contact' && (available('compare') || (!knows('relay') && available('inspect-relay'))));
-    else if (!r.console && r.room === 'archive' && r.intent === 'connect') featured = available('plan-studio') || available('read-routing');
+    if (!featured && r.room === 'archive' && r.intent === 'connect') featured = available('read-routing') || (!knows('label') && available('ask-mira'));
   }
+  $('late-contact').hidden = !showLate;
+  const lateActions = [lateAlt && { ...lateAlt, detail: '', cost: '송출 1행동' }, showLate && featured !== lateRewind && lateRewind].filter(Boolean);
+  $('late-contact-actions').hidden = !lateActions.length;
+  $('late-contact-actions').replaceChildren(...lateActions.map(actionButton));
   const featuredSlot = $('featured-action');
   featuredSlot.hidden = !featured;
   featuredSlot.replaceChildren(...(featured ? [actionButton({ ...featured, primary: true })] : []));
-  const rest = options.filter((option) => option !== featured && option !== openingAction && option !== consoleCommand && !recapOptions.includes(option));
+  const rest = options.filter((option) => option !== featured && option !== openingAction && option !== consoleCommand
+    && option !== lateAlt && !recapOptions.includes(option));
   $('actions').hidden = !rest.length;
   $('actions').replaceChildren(...rest.map((option) => actionButton({ ...option, primary: featured ? false : option.primary })));
 }
@@ -1871,6 +1958,20 @@ function renderDeduction() {
   const discovered = Object.entries(evidence).filter(([, item]) => knows(item.clue));
   $('deduction').hidden = !discovered.length;
   if ($('deduction').hidden) return;
+  const failed = latestFailedReservation();
+  const r = game.run;
+  $('clock-recovery').hidden = !failed;
+  $('failed-time').textContent = failed ? fmt('{0} 예약 실패 · 연결한 기록의 시각을 다시 비교하세요.', time(failed)) : '';
+  $('paired-clocks').replaceChildren(...(failed ? game.matches.flatMap((event) => {
+    const pair = discovered.map(([, item]) => item).filter((item) => item.event === event);
+    if (pair.length !== 2) return [];
+    return [element('li', fmt('같은 {0} · 이쪽 {1} / 건너편 {2}', t(event === 'bell' ? '종소리' : '방송 멘트'), pair[0].time, pair[1].time))];
+  }) : []));
+  const hypothesisStage = $('hypothesis-stage');
+  const hypothesisSlot = $(failed ? 'retry-hypothesis' : 'normal-hypothesis');
+  if (hypothesisStage.parentElement !== hypothesisSlot) hypothesisSlot.append(hypothesisStage);
+  $('journal-airlog').hidden = !failed || knows('airlog') || r.room === 'archive' || r.phase !== 'play'
+    || r.review || Boolean(r.console) || r.elapsed > LIMIT - 2;
   $('clock-evidence').replaceChildren(...Object.entries({ local: '이쪽 시계', remote: '건너편 시계' }).map(([side, title]) => {
     const column = element('div', '', 'evidence-column');
     column.append(element('h4', title));
@@ -1907,11 +2008,10 @@ function renderDeduction() {
   $('hypothesis-stage').hidden = !game.matches.length;
   renderReservation('journal-reservation-status');
   const reserved = reservationPlan();
-  const r = game.run;
   const onRoof = r.room === 'roof';
   const canTravel = reserved.proposed > r.elapsed + 1 && (!reserved.actual || reserved.actual > r.elapsed + 1);
   const apply = $('journal-reserve');
-  apply.hidden = !reserved.canApply || (!onRoof && !canTravel);
+  apply.hidden = !reserved.canApply || Boolean(failed && reserved.proposed === failed) || (!onRoof && !canTravel);
   apply.dataset.command = onRoof ? 'reserve' : 'roof';
   apply.textContent = t(!onRoof ? '옥상 송신실로 이동 · 1행동'
     : reserved.actual ? '옥상 송신기의 예약 변경 · 1행동' : '옥상 송신기에서 예약하기 · 1행동');
@@ -1923,6 +2023,7 @@ function renderDeduction() {
     button.dataset.hypothesis = id;
     button.setAttribute('aria-pressed', String(game.hypothesis === id));
     button.addEventListener('click', () => {
+      if (failed) r.clockReviewed = hypothesis.local !== failed;
       game.hypothesis = id;
       save();
       render();
@@ -1931,9 +2032,10 @@ function renderDeduction() {
     });
     return button;
   }));
-  $('hypothesis-result').textContent = game.hypothesis
-    ? fmt('가설대로라면 건너편 23:58은 이쪽 {0}입니다. 옥상 송신기에서 시험하세요.', time(hypotheses[game.hypothesis].local))
-    : t('건너편의 다음 교신은 23:58입니다. 연결한 기록을 근거로 가설을 고르세요.');
+  const proposed = hypotheses[game.hypothesis]?.local;
+  $('hypothesis-result').textContent = !proposed ? t('건너편의 다음 교신은 23:58입니다. 연결한 기록을 근거로 가설을 고르세요.')
+    : proposed === failed ? fmt('이 가설은 실패한 {0} 예약과 같습니다. 기록을 비교해 가설을 다시 고르세요.', time(failed))
+      : fmt('가설대로라면 건너편 23:58은 이쪽 {0}입니다. 옥상 송신기에서 시험하세요.', time(proposed));
 }
 
 function pairEvidence() {
@@ -2021,6 +2123,15 @@ function openJournal() {
     return item;
   }));
   showGameDialog('journal');
+}
+
+function openClockReview() {
+  openJournal();
+  const summary = $('clock-recovery');
+  if (!summary.hidden) {
+    summary.scrollIntoView({ block: 'nearest' });
+    summary.focus({ preventScroll: true });
+  }
 }
 
 function openMystery() {
@@ -2327,6 +2438,10 @@ $('journal-reserve').addEventListener('click', ({ currentTarget }) => {
   journalCommand = currentTarget.dataset.command;
   $('journal').close();
 });
+$('journal-airlog').addEventListener('click', () => {
+  journalCommand = 'archive';
+  $('journal').close();
+});
 $('record-close').addEventListener('click', () => $('record').close());
 $('epilogue-open').addEventListener('click', openEpilogue);
 $('recap-epilogue').addEventListener('click', openEpilogue);
@@ -2386,7 +2501,7 @@ for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListene
     const command = journalCommand;
     journalCommand = '';
     if (command === 'reserve') reserveRelay();
-    else enter('roof');
+    else enter(command);
   }
   syncAmbience();
 });

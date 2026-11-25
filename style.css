@@ -87,6 +87,9 @@ h1 em { color: var(--accent); font-style: normal; }
 .scene-event { margin-top: 9px; border: 1px solid #4c6860; border-radius: 7px; color: #bfefdf; background: #182925; padding: 9px 10px; font-size: .9rem; white-space: pre-line; line-height: 1.57; }
 .featured-action { margin-bottom: 9px; }
 .featured-action .action:disabled { opacity: .56; }
+.late-contact { margin-bottom: 7px; padding: 6px 8px; border-inline-start: 3px solid var(--accent); border-radius: 5px; background: #36291f; color: #ffe1b5; font-size: .86rem; line-height: 1.4; }
+.late-contact-actions { display: grid; gap: 5px; margin-bottom: 8px; }
+.late-contact-actions .action { min-height: 44px; }
 .opening-guidance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .65fr); align-items: center; gap: 10px; padding: 9px 13px; border-bottom: 1px solid #5d4936; background: #30271f; color: #ffe1b5; }
 .opening-guidance p { font-size: .93rem; line-height: 1.45; }
 .opening-guidance .action { min-height: 44px; }
@@ -275,6 +278,15 @@ noscript { display: block; margin: 20px; }
 .route-options input:focus-visible + span { outline: 2px solid var(--signal); outline-offset: 2px; }
 #routing-status { margin-top: 7px; }
 #routing-status:empty { display: none; }
+.wiring-note { margin: 4px 0 7px; }
+.wiring-note summary { display: list-item; min-height: 44px; padding: 11px 0; color: var(--signal); font-size: .89rem; cursor: pointer; }
+.wiring-note dl { display: grid; gap: 4px; border: 1px solid #66725b; border-radius: 6px; margin: 0; padding: 6px 8px; font-size: .86rem; }
+.wiring-note dl div { display: flex; justify-content: space-between; gap: 8px; }
+.wiring-note dd { margin: 0; color: var(--accent); text-align: end; }
+.clock-recovery { margin: 7px 0; padding: 7px 8px; border: 1px solid #766047; border-radius: 6px; background: #33281f; color: #ffe1b5; font-size: .89rem; }
+.clock-recovery ul { display: grid; gap: 3px; margin-top: 4px; }
+.clock-recovery li { color: var(--paper); }
+#journal-airlog { width: 100%; margin: 7px 0 4px; white-space: normal; }
 #broadcast-channels li[data-destination] { grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr); }
 .broadcast li[data-feed-count="0"] .meter::after { width: 0; }
 .broadcast li[data-feed-count="1"] .meter::after { width: 54%; }
