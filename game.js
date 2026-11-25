@@ -8,6 +8,11 @@ const TRANSMISSION_CUT = 1500;
 const TRANSMISSION_LENGTH = 7600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
 const PIER_LIMIT = 4;
+const routeSources = { tape: '순임의 테이프', relay: '건너편 교신' };
+const routeDestinations = { main: '한려 FM', aux: '보조 채널' };
+const correctRoutes = { tape: 'main', relay: 'aux' };
+const emptyRoutes = () => ({ tape: '', relay: '' });
+const routesReady = (routes) => routes.tape === correctRoutes.tape && routes.relay === correctRoutes.relay;
 const cartArrived = '높은 종, 낮은 종. 23:54에 재호의 수레가 들어온다.';
 const cartDeparted = '재호가 남은 상자를 차에 싣는다. 복도가 비었다.';
 const tapeDelivered = '재호의 무전 “윤서 씨한테 원본 전달했어요. 이제 옥상만 남았죠?”';
@@ -87,7 +92,7 @@ const clues = {
   bell: { title: '복도의 종소리', fact: '이쪽 시계 23:54. 높은 종소리 뒤에 낮은 종소리가 울렸다. 수레가 현관에 들어왔다.', question: '건너편 녹음에도 같은 소리가 있을까?' },
   departure: { title: '수레의 출발 시각', fact: '재호는 23:57에 남은 짐을 차에 싣는다.', question: '그 전에 상자 안을 확인하거나, 누군가에게 맡길 수 있을까?' },
   label: { title: '파란 스티커', fact: '‘빈 상자’ 라벨 아래에 미라가 붙인 파란 스티커가 있다. 주민 인터뷰 원본이 그 안에 들어 있었다.', question: '라벨이 틀렸다는 걸 더 일찍 알려 주면?' },
-  routing: { title: '두 곳에서 하는 일', fact: '연결표에는 두 사람이 표시돼 있다. 방송실에서 테이프를 큐에 올리고, 옥상에서 수신 채널을 열어야 한다.', question: '두 곳의 작업을 같은 시간에 맡길 방법은?' },
+  routing: { title: '두 곳에서 하는 일', fact: '방송실에서 테이프를 큐에 올리고 옥상에서 수신 채널을 연다. 연결표에는 테이프는 한려 FM, 건너편 교신은 보조 채널로 표시돼 있다.', question: '두 곳의 작업을 같은 시간에 맡길 방법은?' },
   relay: { title: '건너편 수신 기록', fact: '건너편 시계 23:55. 높은 종소리 뒤에 낮은 종소리가 들어 있다. 다음 교신은 건너편 시계 23:58에 열린다.', question: '이쪽 시계로는 몇 시에 보조 채널을 열어야 할까?', clip: 'distantBell' },
   onAir: { title: '윤서의 오프닝', fact: '이쪽 시계 23:55. 윤서가 “비 오는 항구의 밤입니다”라고 방송을 시작했다.', question: '건너편 방송 일지에는 이 멘트가 언제 찍혔을까?', clip: 'onAir' },
   airlog: { title: '건너편 방송 일지', fact: '자료실의 자동 수신 일지에 “비 오는 항구의 밤입니다”가 건너편 시계 23:56으로 기록돼 있다.', question: '종소리에서 찾은 시차와도 일치할까?', clip: 'onAir' },
@@ -164,13 +169,13 @@ const transmissions = {
 const newRun = () => ({
   elapsed: 0, room: 'studio', phase: 'play', message: '', speaker: '', event: '', clip: '',
   tape: '', courier: false, dj: false, tuneAt: 0, linked: false, used: [], ending: '',
-  review: false, console: '', consoleReady: false, syncMissed: false, log: [],
+  review: false, console: '', consoleReady: false, syncMissed: false, log: [], routes: emptyRoutes(),
   receiverBand: 0, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
 });
 
 function loadGame() {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 8, loop: 1, known: ['echo'], unlocked: [], sound: false,
+  const fresh = { version: 9, loop: 1, known: ['echo'], unlocked: [], sound: false,
     storySolved: false, storyReplies: [], epilogueSeen: false,
     previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
@@ -210,6 +215,15 @@ function loadGame() {
       && ['play', 'expired', 'ending'].includes(previous.phase) && Array.isArray(previous.used)
       && (previous.phase !== 'ending' || Object.hasOwn(endings, previous.ending))) {
       fresh.run = { ...newRun(), ...previous };
+      if (!['voices', 'signal', 'both'].includes(fresh.run.console)) fresh.run.console = '';
+      fresh.run.routes = emptyRoutes();
+      if (previous.console === 'both') {
+        for (const source of Object.keys(routeSources)) {
+          const destination = previous.routes?.[source];
+          if (previous.consoleReady === true) fresh.run.routes[source] = correctRoutes[source];
+          else if (Object.hasOwn(routeDestinations, destination)) fresh.run.routes[source] = destination;
+        }
+      }
       if (!Number.isInteger(fresh.run.receiverBand) || !receiverBands[fresh.run.receiverBand]) fresh.run.receiverBand = 0;
       if (!Array.isArray(fresh.run.log)) fresh.run.log = [];
       if (old.version === 2 && previous.phase === 'play') {
@@ -234,6 +248,7 @@ function loadGame() {
 
 const game = loadGame();
 let transmission = null;
+let hintState = { topic: '', level: 0, open: false };
 const $ = (id) => document.getElementById(id);
 const t = (value) => game.language === 'en'
   ? value.split('\n').map((line) => GAME_EN[line] ?? line).join('\n') : value;
@@ -570,21 +585,24 @@ function update(cue = '') {
 function openConsole(mode) {
   game.run.console = mode;
   game.run.consoleReady = false;
+  game.run.routes = emptyRoutes();
   update();
-  focusConsoleControl();
+  if (mode === 'both') focusConsoleControl($('routing-title'));
+  else focusConsoleControl();
 }
 
-function focusConsoleControl() {
-  const button = $('actions').querySelector('button');
-  button.scrollIntoView({ block: 'nearest' });
-  button.focus({ preventScroll: true });
+function focusConsoleControl(control = $('actions').querySelector('button')) {
+  control.scrollIntoView({ block: 'nearest' });
+  control.focus({ preventScroll: true });
 }
 
 function consoleActions() {
   const r = game.run;
   const actions = [];
   if (r.console === 'both' && !r.consoleReady) {
-    actions.push({ title: '동시 송출 신호 보내기', detail: '원본 전달과 교신이 겹친 지금, 윤서에게 재생 큐를 보냅니다.', cost: '1행동', primary: true, run: () => {
+    actions.push({ title: '동시 송출 신호 보내기', detail: '연결한 두 채널로 윤서에게 재생 큐를 보냅니다.', cost: '1행동', primary: true,
+      disabled: !routesReady(r.routes), run: () => {
+      if (!routesReady(r.routes) || r.phase !== 'play' || r.consoleReady || r.elapsed !== REPLY_WINDOW) return;
       r.consoleReady = true;
       update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', '동시 송출 신호 보내기'));
       focusConsoleControl();
@@ -603,6 +621,7 @@ function consoleActions() {
   if (!r.consoleReady) {
     actions.push({ title: '돌아가기', detail: '송출 선택을 다시 고릅니다.', cost: '시간 유지', run: () => {
       r.console = '';
+      r.routes = emptyRoutes();
       update();
     } });
   }
@@ -681,7 +700,7 @@ function choices() {
       '“‘빈 상자’라고 쓰인 라벨 아래 파란 스티커를 붙였어요. 그 안에 주민 인터뷰 원본을 넣었어요.”',
       '미라', false, () => learn('rundown'));
     scene('read-routing', '두 채널 연결표 펼치기', '방송실과 옥상에서 어떤 일을 할 수 있는지 확인합니다.', 'routing',
-      '연결표 위에 두 사람이 그려져 있다. 한 명은 방송실의 재생기, 한 명은 옥상의 송신기에 손을 올리고 있다.', '', true);
+      '연결표 위에 두 사람이 그려져 있다. 방송실 재생기에서 한려 FM으로, 옥상 교신에서 보조 채널로 선이 이어진다.', '', true);
     scene('read-airlog', '건너편 방송 일지 읽기', '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
       '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”\n뒷면 편성표에는 순임의 인터뷰 칸이 비어 있다.',
       '', false, () => learn('remoteSlot'));
@@ -863,16 +882,44 @@ function renderBroadcast() {
   $('broadcast').hidden = !r.console || r.review || Boolean(transmission);
   if (!r.console) return;
   const onAir = r.phase === 'ending';
+  const isDual = r.console === 'both';
+  const routing = isDual && r.phase === 'play' && !r.consoleReady;
+  $('routing-panel').hidden = !routing;
+  $('routing-status').hidden = !routing;
+  if (routing) {
+    for (const input of $('routing-panel').querySelectorAll('input')) {
+      input.checked = r.routes[input.closest('fieldset').dataset.source] === input.value;
+    }
+    const { tape, relay } = r.routes;
+    const status = !tape || !relay ? '각 입력에 목적지를 골라 주세요.'
+      : tape === relay ? '두 입력이 같은 채널에 모였습니다. 두 목적지의 신호를 확인하세요.'
+        : routesReady(r.routes) ? '두 채널을 연결했습니다. 동시 송출 신호를 보낼 수 있습니다.'
+          : '두 채널에 신호가 들어옵니다. 연결표와 비교해 목적지를 다시 확인하세요.';
+    $('routing-status').textContent = t(status);
+  }
   $('broadcast').dataset.live = String(onAir);
   $('broadcast').dataset.linked = String(r.consoleReady);
   $('broadcast-state').textContent = t(onAir ? '송출 완료' : r.consoleReady ? '두 채널 연결됨' : '송출 대기');
-  $('sync-cue').hidden = r.console !== 'both' || onAir || r.consoleReady;
+  $('sync-cue').hidden = !routing;
   $('sync-cue').textContent = t('23:57 · 원본 전달 완료 · 건너편 교신 연결');
   const channels = {
     voices: [['순임의 인터뷰', r.tape ? '테이프 장착' : '테이프 대기']],
     signal: [['건너편 윤서', '교신 연결'], ['내 마이크', '마이크 대기']],
-    both: [['순임의 테이프', '테이프 장착'], ['건너편 윤서', r.consoleReady ? '두 채널 연결됨' : '채널 연결 대기']],
   }[r.console];
+  if (isDual) {
+    $('broadcast-channels').replaceChildren(...Object.entries(routeDestinations).map(([destination, label]) => {
+      const sources = Object.keys(routeSources).filter((source) => r.routes[source] === destination);
+      const state = sources.map((source) => t(routeSources[source])).join(' · ') || t('입력 없음');
+      const row = element('li');
+      row.dataset.destination = destination;
+      row.dataset.feedCount = sources.length;
+      const meter = element('span', '', 'meter');
+      meter.setAttribute('aria-hidden', 'true');
+      row.append(element('span', label), element('strong', onAir ? '송출 완료' : state), meter);
+      return row;
+    }));
+    return;
+  }
   $('broadcast-channels').replaceChildren(...channels.map(([name, state]) => {
     const line = element('li');
     const meter = element('span', '', 'meter');
@@ -1053,6 +1100,87 @@ function renderTimeline() {
   $('timeline-current').replaceChildren(...(current.length ? current : [element('li', '이번 밤의 행동을 기다리는 중', 'timeline-empty')]));
 }
 
+const playHints = {
+  start: ['마지막 방송에 필요한 원본은 누가 옮기고 있을까요?', '복도 현관으로 수레가 들어옵니다. 수레에 정리 중인 상자가 실려 있습니다.', '방송실의 “복도로 가서 수레 확인”을 선택하세요.'],
+  findHall: ['원본이 담긴 상자가 지금 어디 있을까요?', '재호의 수레는 23:54부터 23:57 전까지 복도에 있습니다.', '방송국 지도에서 복도로 이동해 수레의 상자를 확인하세요.'],
+  arrival: ['현관에서 이미 들어온 상자가 보이나요?', '현관 종이 울리는 시각은 23:54입니다. 그때 상자가 복도로 들어옵니다.', '복도에서 현관 종을 기다린 뒤 수레의 상자를 확인하세요.'],
+  trolley: ['수레의 라벨 아래에 무엇이 보이나요?', '원본은 접힌 라벨 아래 파란 스티커가 붙은 상자에 들어 있습니다.', '“수레의 상자 확인”으로 테이프를 확보하세요.'],
+  carry: ['테이프를 재생할 수 있는 곳은 어디인가요?', '방송실에 주민 인터뷰를 내보낼 재생기가 있습니다. 이동과 재생에 각각 1행동이 듭니다.', '방송실로 이동해 주민 인터뷰를 고르고 테이프를 재생하세요.'],
+  airInterview: ['찾은 원본을 누구에게 들려줄까요?', '방송실에서 주민 인터뷰를 선택하면 재생 콘솔이 열립니다.', '“주민 인터뷰 방송하기”를 골라 테이프를 재생하세요.'],
+  playTape: ['콘솔에 원본을 올렸나요?', '테이프 재생이 주민 인터뷰를 전파에 실어 보냅니다.', '“테이프 재생하기”를 누르세요.'],
+  discoverRelay: ['다른 윤서의 목소리는 어느 장비에 기록됐을까요?', '옥상 송신실에 건너편 종소리와 다음 호출 시각이 담긴 기록이 있습니다.', '옥상 송신실에서 “건너편 수신 기록 조사”를 선택하세요.'],
+  clocks: ['두 시계에서 같은 소리를 낸 사건은 무엇인가요?', '수첩에서 복도 종 23:54와 건너편 종 23:55를 비교하세요. 건너편 다음 호출은 23:58입니다.', '두 종 기록을 연결하고 “건너편이 1분 빠르다”를 고르세요. 옥상에서 실제 23:57 교신을 예약하세요.'],
+  waitContact: ['예약한 시각에 어느 곳에서 방송을 마칠까요?', '옥상 송신기는 예약한 시각에 채널을 엽니다. 연결되면 옥상에서 응답할 수 있습니다.', '옥상으로 이동하거나 옥상에서 기다려 23:57의 호출을 받으세요.'],
+  waitTape: ['당신이 움직이는 동안 누가 원본을 옮기고 있나요?', '재호와 한 약속은 23:57에 원본을 윤서의 콘솔에 두는 것입니다.', '23:57까지 필요한 준비를 마치거나 방송실에서 기다리세요.'],
+  radioNow: ['방송실에서 복도에 있는 재호를 부를 수 있나요?', '직원 무전 호출과 파란 스티커를 알고 있습니다. 23:57에 재호가 원본을 전달할 수 있습니다.', '지금 “무전으로 재호에게 부탁”을 선택하세요.'],
+  late: ['다시 시도하면 어느 행동을 더 일찍 할 수 있을까요?', '원본은 23:57까지, 교신 예약은 연결하려는 시각까지 준비해야 합니다. 이번 밤의 기록에서 놓친 시각을 확인할 수 있습니다.', '“되감기 검토”에서 기록을 확인하고 23:52로 돌아가세요.'],
+  reply: ['건너편 윤서에게 들려줄 목소리는 어디에서 보낼 수 있나요?', '교신이 열렸습니다. 응답에는 옥상의 송출 콘솔과 1행동이 필요합니다.', '옥상에서 “건너편 윤서에게 응답”을 고르고 마이크를 여세요.'],
+  microphone: ['건너편에 보낼 신호는 준비됐나요?', '교신이 연결됐습니다. 이제 마이크에 말을 실을 수 있습니다.', '“마이크 열기”를 누르세요.'],
+  join: ['원본, 윤서, 교신이 모두 준비됐나요?', '23:57의 콘솔에서 두 장소를 잇고 신호에 1행동, 마지막 송출에 1행동을 씁니다.', '“두 방송을 잇기”를 열어 송출선을 연결하세요.'],
+  patch: ['연결표에서 두 입력의 목적지는 어디였나요?', '단서 수첩의 “두 곳에서 하는 일”에 송출선이 기록돼 있습니다. 콘솔의 두 출력에 지금 들어오는 신호도 볼 수 있습니다.', '순임의 테이프는 한려 FM으로, 건너편 교신은 보조 채널로 연결하고 동시 송출 신호를 보내세요.'],
+  sendBoth: ['신호가 연결된 뒤 마지막으로 열 장비는 무엇인가요?', '두 채널이 연결돼 있고 콘솔에 송출할 준비가 끝났습니다.', '“마이크 열고 함께 송출”을 누르세요.'],
+  missingTape: ['당신이 옥상에 있는 동안 누가 원본을 방송실로 옮길 수 있을까요?', '복도 운반표에는 23:57에 짐을 내보낸다는 기록이 있습니다. 파란 스티커는 원본 상자의 표식입니다.', '다음 회차에 수레의 상자나 자료실의 미라에게서 표식을 확인하고, 23:57 전에 복도의 재호에게 원본을 맡기세요.'],
+  missingTapeByRadio: ['당신이 옥상에 있는 동안 누가 원본을 방송실로 옮길 수 있을까요?', '파란 스티커는 원본 상자의 표식입니다. 직원 무전에서 재호의 호출 문구를 이미 확인했습니다.', '다음 회차 방송실에서 23:57 전에 “무전으로 재호에게 부탁”을 선택하세요.'],
+};
+
+function currentHint() {
+  const r = game.run;
+  if (r.console === 'both') return r.consoleReady ? 'sendBoth' : 'patch';
+  if (r.console) return r.console === 'voices' ? 'playTape' : 'microphone';
+  if (r.linked) {
+    if (r.tape === 'delivered' && r.dj && r.elapsed === REPLY_WINDOW && (r.room === 'roof' || r.room === 'studio')) return 'join';
+    if (!r.tape) return knows('staffCall') && knows('label') ? 'missingTapeByRadio' : 'missingTape';
+    if (r.room === 'roof' || (r.syncMissed && r.elapsed < LIMIT - 1)) return 'reply';
+  }
+  if (r.tape && (!r.dj || !r.courier || r.elapsed >= REPLY_WINDOW)) {
+    if (r.room === 'studio') return 'airInterview';
+    return r.elapsed <= LIMIT - 2 ? 'carry' : 'late';
+  }
+  if (r.room === 'roof' || (r.dj && r.courier)) {
+    if (r.tuneAt === REPLY_WINDOW && r.elapsed < REPLY_WINDOW) return 'waitContact';
+    const travel = r.room === 'roof' ? 0 : 1;
+    const inspect = knows('relay') ? 0 : 1;
+    if (r.elapsed + travel + inspect + 1 > REPLY_WINDOW) return 'late';
+    return knows('relay') ? 'clocks' : 'discoverRelay';
+  }
+  if (r.courier && !r.tape) return 'waitTape';
+  if (!r.tape && r.elapsed >= CART_LEAVES) return knows('staffCall') && knows('label') ? 'missingTapeByRadio' : 'missingTape';
+  if (r.elapsed === CART_LEAVES - 1 && r.room !== 'hall') {
+    return r.room === 'studio' && knows('staffCall') && knows('label') ? 'radioNow' : 'late';
+  }
+  if (r.room === 'hall') return r.elapsed < CART_ARRIVES ? 'arrival' : 'trolley';
+  return r.room === 'studio' && r.elapsed <= 1 ? 'start' : 'findHall';
+}
+
+function renderHints() {
+  const visible = game.run.phase === 'play' && !game.run.review && !transmission;
+  $('play-hints').hidden = !visible;
+  const topic = visible ? currentHint() : '';
+  if (topic !== hintState.topic) hintState = { topic, level: 0, open: false };
+  $('hint-toggle').setAttribute('aria-expanded', String(hintState.open));
+  $('hint-toggle').textContent = t(hintState.open ? '힌트 닫기' : '힌트');
+  $('hint-steps').hidden = !hintState.open;
+  if (!hintState.open) return;
+  const labels = ['질문', '확인할 증거', '할 행동'];
+  $('hint-list').replaceChildren(...playHints[topic].slice(0, hintState.level).map((message, index) => {
+    const item = element('li');
+    item.append(element('strong', labels[index]), element('p', message));
+    return item;
+  }));
+  $('hint-more').hidden = hintState.level >= labels.length;
+  $('hint-more').textContent = t(hintState.level === 1 ? '증거 보기' : '할 행동 보기');
+}
+
+function chooseRoute(event) {
+  const input = event.target;
+  const r = game.run;
+  if (!input.matches('input[type="radio"]') || !input.checked || r.phase !== 'play' || r.console !== 'both' || r.consoleReady) return;
+  r.routes[input.closest('fieldset').dataset.source] = input.value;
+  save();
+  renderBroadcast();
+  $('actions').querySelector('button').disabled = !routesReady(r.routes);
+}
+
 function render() {
   const r = game.run;
   const left = LIMIT - r.elapsed;
@@ -1077,6 +1205,7 @@ function render() {
   renderReadiness();
   renderBroadcast();
   renderRecap();
+  renderHints();
 
   const advanceNight = {
     title: '23:52로 되감기', detail: '발견한 단서와 결말을 가지고 돌아갑니다.', primary: true, cost: '', run: rewind,
@@ -1087,13 +1216,14 @@ function render() {
       update();
     },
   }] : r.phase === 'play' ? choices() : [advanceNight];
-  $('actions').replaceChildren(...options.map(({ title, detail, primary, cost, run }) => {
+  $('actions').replaceChildren(...options.map(({ title, detail, primary, cost, disabled, run }) => {
     const button = element('button', '', primary ? 'action primary' : 'action');
     const heading = element('span', '', 'action-head');
     heading.append(element('strong', title));
     if (cost) heading.append(element('span', cost, 'cost'));
     button.append(heading, element('span', detail, 'action-detail'));
     button.type = 'button';
+    button.disabled = Boolean(disabled);
     button.addEventListener('click', run);
     return button;
   }));
@@ -1421,6 +1551,24 @@ $('pier').addEventListener('close', () => {
   if (document.activeElement === document.body && !$('pier-open').hidden) $('pier-open').focus({ preventScroll: true });
 });
 $('rewind').addEventListener('click', reviewNight);
+$('routing-panel').addEventListener('change', chooseRoute);
+$('hint-toggle').addEventListener('click', () => {
+  if (!hintState.topic) return;
+  hintState.open = !hintState.open;
+  if (hintState.open && !hintState.level) hintState.level = 1;
+  renderHints();
+});
+$('hint-more').addEventListener('click', () => {
+  if (!hintState.open || hintState.level >= 3) return;
+  hintState.level += 1;
+  renderHints();
+  if (hintState.level === 3) {
+    const lastHint = $('hint-list').lastElementChild;
+    lastHint.tabIndex = -1;
+    lastHint.focus({ preventScroll: true });
+    lastHint.scrollIntoView({ block: 'nearest' });
+  }
+});
 $('receiver-panel').open = matchMedia('(min-width: 900px)').matches;
 $('receiver-dial').addEventListener('input', tuneReceiver);
 $('receiver-replay').addEventListener('click', () => playClip('receiverEcho'));

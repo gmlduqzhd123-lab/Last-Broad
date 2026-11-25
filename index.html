@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=8">
-  <script defer src="./locale.js?v=8"></script>
-  <script defer src="./game.js?v=8"></script>
+  <link rel="stylesheet" href="./style.css?v=9">
+  <script defer src="./locale.js?v=9"></script>
+  <script defer src="./game.js?v=9"></script>
 </head>
 <body>
   <header class="masthead">
@@ -127,7 +127,28 @@
             <section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
               <div class="panel-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
               <p id="sync-cue" class="sync-cue" hidden></p>
+              <section id="routing-panel" class="routing-panel" aria-labelledby="routing-title" hidden>
+                <h4 id="routing-title" tabindex="-1" data-text="송출선 연결">송출선 연결</h4>
+                <p class="note" data-text="각 입력의 목적지에 신호를 연결하세요. 연결하는 동안은 시간이 흐르지 않습니다.">각 입력의 목적지에 신호를 연결하세요. 연결하는 동안은 시간이 흐르지 않습니다.</p>
+                <div class="routing-switches">
+                  <fieldset data-source="tape">
+                    <legend data-text="순임의 테이프">순임의 테이프</legend>
+                    <div class="route-options">
+                      <label><input type="radio" name="tape-destination" value="main"><span data-text="한려 FM">한려 FM</span></label>
+                      <label><input type="radio" name="tape-destination" value="aux"><span data-text="보조 채널">보조 채널</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset data-source="relay">
+                    <legend data-text="건너편 교신">건너편 교신</legend>
+                    <div class="route-options">
+                      <label><input type="radio" name="relay-destination" value="main"><span data-text="한려 FM">한려 FM</span></label>
+                      <label><input type="radio" name="relay-destination" value="aux"><span data-text="보조 채널">보조 채널</span></label>
+                    </div>
+                  </fieldset>
+                </div>
+              </section>
               <ul id="broadcast-channels"></ul>
+              <p class="note" id="routing-status" role="status" hidden></p>
             </section>
             <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
               <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
@@ -148,6 +169,13 @@
               <button class="utility epilogue-link" id="recap-epilogue" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
             </section>
             <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동" data-label="장면에서 할 수 있는 행동"></div>
+            <section class="play-hints" id="play-hints" aria-labelledby="hint-toggle" hidden>
+              <button class="utility" id="hint-toggle" type="button" aria-controls="hint-steps" aria-expanded="false" data-text="힌트">힌트</button>
+              <div id="hint-steps" hidden>
+                <ol id="hint-list" aria-live="polite"></ol>
+                <button class="utility" id="hint-more" type="button"></button>
+              </div>
+            </section>
             <div id="replay" class="replay"></div>
           </div>
         </section>

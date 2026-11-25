@@ -1,8 +1,8 @@
 // 같은 주소의 다른 앱과 캐시 저장소를 같이 쓰므로 내 접두어 캐시만 지운다
-const CACHE = 'last-broad-v4';
+const CACHE = 'last-broad-v5';
 const CACHE_PREFIX = 'last-broad-v';
 const CORE = [
-  './', './index.html', './style.css?v=8', './locale.js?v=8', './game.js?v=8',
+  './', './index.html', './style.css?v=9', './locale.js?v=9', './game.js?v=9',
   './studio.webp', './hall.webp', './hall-empty.webp', './archive.webp', './roof.webp', './pier.webp',
   './manifest.webmanifest', './ys-install.js', './ys-qr.js', './qr.svg', './icons/icon-192.png',
 ];
