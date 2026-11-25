@@ -55,7 +55,8 @@ const evidence = {
   remoteOpening: { clue: 'airlog', side: 'remote', event: 'onAir', time: '23:56', label: '건너편 방송 일지', detail: '“비 오는 항구의 밤입니다.”' },
 };
 const voices = {
-  prologue: './audio/prologue.wav',
+  prologue: './audio/prologue-signal.wav',
+  openingEcho: './audio/opening-echo.wav',
   opening: './audio/opening.wav',
   call: './audio/call.wav',
   delivery: './audio/delivery.wav',
@@ -174,12 +175,12 @@ const newRun = () => ({
   elapsed: 0, room: 'studio', phase: 'play', message: '', speaker: '', event: '', clip: '',
   tape: '', courier: false, dj: false, tuneAt: 0, linked: false, used: [], ending: '',
   review: false, console: '', consoleReady: false, syncMissed: false, log: [], routes: emptyRoutes(),
-  receiverBand: 0, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
+  receiverBand: 0, receiverTuned: false, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
 });
 
 function restoreGame(old) {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 11, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX }, prologueSeen: false,
+  const fresh = { version: 12, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX }, prologueSeen: false,
     storySolved: false, storyReplies: [], epilogueSeen: false,
     previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
@@ -232,6 +233,7 @@ function restoreGame(old) {
         }
       }
       if (!Number.isInteger(fresh.run.receiverBand) || !receiverBands[fresh.run.receiverBand]) fresh.run.receiverBand = 0;
+      fresh.run.receiverTuned = previous.receiverTuned === true || fresh.run.receiverBand !== 0;
       if (!Array.isArray(fresh.run.log)) fresh.run.log = [];
       if (old.version === 2 && previous.phase === 'play') {
         fresh.run.message = '진행 중인 밤을 이어받았습니다. 옥상 교신은 수첩의 두 시계에서 예약할 수 있습니다.';
@@ -497,7 +499,6 @@ const prologueCaptions = [
   [5150, '오늘 마지막 순서는 주민들의 목소리입니다.\n아직 한 편의 이야기가 남았습니다.'],
   [11000, ''],
   [16100, '[꺼진 수신기에서 짧은 잡음]'],
-  [17300, '“거긴 아직…”'],
 ];
 
 function prologueElapsed() {
@@ -534,7 +535,7 @@ function playPrologueSound() {
 function tickPrologue() {
   if (!prologue || prologue.startedAt === null) return;
   const elapsed = prologueElapsed();
-  if (elapsed >= PROLOGUE_LENGTH) { finishPrologue(); return; }
+  if (elapsed >= PROLOGUE_LENGTH) { finishPrologue(true); return; }
   paintPrologue(elapsed);
   prologue.frame = requestAnimationFrame(tickPrologue);
 }
@@ -554,15 +555,43 @@ function resumePrologue() {
   tickPrologue();
 }
 
-function finishPrologue() {
+function openingReceiverHere() {
+  const r = game.run;
+  return r.phase === 'play' && r.room === 'studio' && r.elapsed === 0 && !r.review && !r.console;
+}
+
+function animateReceiverHandoff(from) {
+  const sceneImage = $('scene-image');
+  const to = sceneImage.getBoundingClientRect();
+  if (!sceneImage.animate || !to.width || !to.height) return;
+  const cut = document.createElement('img');
+  cut.src = sceneImage.src;
+  cut.alt = '';
+  cut.className = 'receiver-handoff';
+  cut.setAttribute('aria-hidden', 'true');
+  const frame = ({ left, top, width, height }, opacity) => ({
+    left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px`, opacity,
+  });
+  document.body.append(cut);
+  const motion = cut.animate([frame(from, 1), frame(to, 0)], { duration: 340, easing: 'cubic-bezier(.2,.75,.35,1)', fill: 'both' });
+  motion.finished.then(() => cut.remove(), () => cut.remove());
+}
+
+function finishPrologue(completed = false) {
   if (!prologue) return;
+  const atReceiver = openingReceiverHere();
+  const continueVoice = atReceiver && !game.run.receiverTuned && (game.sound || (completed && prologue.sound));
+  const from = completed && atReceiver && !matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? $('prologue').querySelector('[data-prologue-image="receiver"]').getBoundingClientRect() : null;
   pausePrologue();
   prologue = null;
   game.prologueSeen = true;
   save();
   $('prologue').close();
   document.body.classList.remove('prologue-active');
-  $('narration').focus({ preventScroll: true });
+  if (from) animateReceiverHandoff(from);
+  $(atReceiver ? 'receiver-dial' : 'narration').focus({ preventScroll: true });
+  if (continueVoice) playClip('openingEcho');
 }
 
 function startPrologue(replay = false) {
@@ -591,17 +620,18 @@ function drawSignal(node, levels) {
 function renderReceiver() {
   const r = game.run;
   const panel = $('receiver');
-  panel.hidden = r.phase !== 'play' || r.elapsed !== 0 || r.review || Boolean(r.console);
-  if (panel.hidden) return;
+  const visible = openingReceiverHere();
+  $('entry-controls').hidden = !visible;
+  $('receiver-replay').hidden = !visible || r.receiverBand !== 2;
+  if (!visible) return;
   const band = receiverBands[r.receiverBand];
   const dial = $('receiver-dial');
   dial.value = r.receiverBand;
   dial.setAttribute('aria-valuetext', t(band.label));
   panel.dataset.locked = String(r.receiverBand === 2);
-  $('receiver-lock').textContent = t(band.state);
-  $('receiver-caption').textContent = t(band.caption);
+  $('receiver-lock').textContent = t(r.receiverTuned ? band.state : opening[1].speaker);
+  $('receiver-caption').textContent = t(r.receiverTuned ? band.caption : opening[1].text);
   drawSignal($('receiver-wave'), band.wave);
-  $('receiver-replay').hidden = r.receiverBand !== 2;
 }
 
 function listenToBand() {
@@ -610,9 +640,11 @@ function listenToBand() {
 }
 
 function tuneReceiver() {
-  if ($('receiver').hidden) return;
+  if (!openingReceiverHere()) return;
+  stopClip();
   const band = Number($('receiver-dial').value);
   game.run.receiverBand = band;
+  game.run.receiverTuned = true;
   if (band === 1 && !knows('staffCall')) {
     learn('staffCall');
     observe('직원 무전에서 재호의 호출 문구를 확인했다.');
@@ -893,7 +925,7 @@ function choices() {
   const directReply = r.syncMissed && r.linked && r.room !== 'roof' && r.elapsed < LIMIT - 1;
 
   if (r.room === 'studio') {
-    if (r.elapsed <= 1) {
+    if (r.elapsed === 1) {
       offer('go-hall', '복도로 가서 수레 확인', '운반 상자에 원본이 섞였을지도 모릅니다.', () => enter('hall'), true);
     }
     scene('ask-dj', '윤서에게 목소리 확인', '눈앞의 윤서도 방금 그 소리를 들었을까요?', 'rundown',
@@ -1072,8 +1104,8 @@ function renderScene() {
   const r = game.run;
   const room = rooms[r.room];
   const [state, setting] = context();
-  const intro = r.phase === 'play' && r.elapsed === 0;
-  const art = room.art || (cartHere(r.elapsed) ? './hall.webp' : './hall-empty.webp');
+  const intro = openingReceiverHere();
+  const art = intro ? './opening-receiver.webp' : room.art || (cartHere(r.elapsed) ? './hall.webp' : './hall-empty.webp');
   const image = $('scene-image');
   if (image.getAttribute('src') !== art) image.setAttribute('src', art);
   const scene = image.closest('.scene');
@@ -1092,7 +1124,7 @@ function renderScene() {
   const story = [];
   if (intro) {
     if (r.message) story.push(spoken({ text: r.message }));
-    story.push(...opening.map(spoken));
+    story.push(spoken(opening[0]));
   } else if (r.message && (r.message !== setting || r.phase !== 'play')) {
     story.push(spoken({ speaker: r.speaker, text: r.message }));
   }
@@ -1345,7 +1377,7 @@ function renderTimeline() {
 }
 
 const playHints = {
-  start: ['마지막 방송에 필요한 원본은 누가 옮기고 있을까요?', '복도 현관으로 수레가 들어옵니다. 수레에 정리 중인 상자가 실려 있습니다.', '방송실의 “복도로 가서 수레 확인”을 선택하세요.'],
+  start: ['마지막 방송에 필요한 원본은 누가 옮기고 있을까요?', '복도 현관으로 수레가 들어옵니다. 수레에 정리 중인 상자가 실려 있습니다.', '방송실의 “복도로 이동”을 선택하세요.'],
   findHall: ['원본이 담긴 상자가 지금 어디 있을까요?', '재호의 수레는 23:54부터 23:57 전까지 복도에 있습니다.', '방송국 지도에서 복도로 이동해 수레의 상자를 확인하세요.'],
   arrival: ['현관에서 이미 들어온 상자가 보이나요?', '현관 종이 울리는 시각은 23:54입니다. 그때 상자가 복도로 들어옵니다.', '복도에서 현관 종을 기다린 뒤 수레의 상자를 확인하세요.'],
   trolley: ['수레의 라벨 아래에 무엇이 보이나요?', '원본은 접힌 라벨 아래 파란 스티커가 붙은 상자에 들어 있습니다.', '“수레의 상자 확인”으로 테이프를 확보하세요.'],
@@ -1393,7 +1425,7 @@ function currentHint() {
     return r.room === 'studio' && knows('staffCall') && knows('label') ? 'radioNow' : 'late';
   }
   if (r.room === 'hall') return r.elapsed < CART_ARRIVES ? 'arrival' : 'trolley';
-  return r.room === 'studio' && r.elapsed <= 1 ? 'start' : 'findHall';
+  return openingReceiverHere() ? 'start' : 'findHall';
 }
 
 function renderHints() {
@@ -2025,7 +2057,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', pauseHiddenAudio);
 window.addEventListener('pageshow', () => { if (soundContext) syncAmbience(); });
-$('prologue-start').addEventListener('click', finishPrologue);
+$('prologue-start').addEventListener('click', () => finishPrologue());
 $('prologue').addEventListener('cancel', (event) => {
   event.preventDefault();
   finishPrologue();
@@ -2066,8 +2098,8 @@ $('hint-more').addEventListener('click', () => {
     lastHint.scrollIntoView({ block: 'nearest' });
   }
 });
-$('receiver-panel').open = matchMedia('(min-width: 900px)').matches;
 $('receiver-dial').addEventListener('input', tuneReceiver);
+$('entry-hall').addEventListener('click', () => { if (openingReceiverHere()) enter('hall'); });
 $('receiver-replay').addEventListener('click', () => playClip('receiverEcho'));
 $('transmission-skip').addEventListener('click', () => closeTransmission(true));
 drawSignal($('tape-wave'), [22, 63, 87, 49, 71, 43, 91, 68, 38, 55, 28, 14]);
@@ -2091,8 +2123,8 @@ $('sound').addEventListener('click', () => {
   syncAmbience();
   if (!game.sound) stopSceneAudio();
   else if (transmission) playClip(transmissionClip());
-  else if (game.run.elapsed === 0 && game.run.receiverBand !== 0) listenToBand();
-  else if (game.run.elapsed === 0) playClip('opening');
+  else if (openingReceiverHere() && game.run.receiverTuned) listenToBand();
+  else if (openingReceiverHere() && !speaking) playClip('openingEcho');
   else if (game.run.clip) playClip(game.run.clip);
 });
 

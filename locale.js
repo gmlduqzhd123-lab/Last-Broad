@@ -507,7 +507,7 @@ const GAME_EN = {
   "할 행동 보기": "Show an action",
   "마지막 방송에 필요한 원본은 누가 옮기고 있을까요?": "Who might be moving the master tape you need tonight?",
   "복도 현관으로 수레가 들어옵니다. 수레에 정리 중인 상자가 실려 있습니다.": "A trolley is coming through the hallway entrance. It carries boxes packed for the station closure.",
-  "방송실의 “복도로 가서 수레 확인”을 선택하세요.": "Choose ‘Check the trolley’ in the studio.",
+  "방송실의 “복도로 이동”을 선택하세요.": "Choose ‘Go to the hallway’ in the studio.",
   "원본이 담긴 상자가 지금 어디 있을까요?": "Where is the box with the master tape now?",
   "재호의 수레는 23:54부터 23:57 전까지 복도에 있습니다.": "Jaeho’s trolley is in the hall from 23:54 until just before 23:57.",
   "방송국 지도에서 복도로 이동해 수레의 상자를 확인하세요.": "Use the map to go to the hallway and check the boxes on the trolley.",
@@ -610,5 +610,7 @@ const GAME_EN = {
   "오늘 마지막 순서는 주민들의 목소리입니다.": "Tonight’s final segment is the voices of our neighbors.",
   "아직 한 편의 이야기가 남았습니다.": "There’s still one story left to tell.",
   "[꺼진 수신기에서 짧은 잡음]": "[A burst of static from the receiver, though it’s switched off]",
-  "“거긴 아직…”": "‘Is it still…’"
+  "신호 맞추기": "Tune the signal",
+  "복도로 이동": "Go to the hallway",
+  "수레에서 인터뷰 원본을 찾습니다.": "Look for the master tape on the trolley."
 };
