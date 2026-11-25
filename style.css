@@ -310,6 +310,8 @@ noscript { display: block; margin: 20px; }
 .recap-outcomes li strong { color: var(--paper); }
 .recap-question { margin: 7px 0 9px; color: #ffe1b5; font-size: .92rem; line-height: 1.45; }
 #recap-actions { display: grid; gap: 5px; }
+.recap-followups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr)); gap: 6px; margin-top: 7px; }
+.recap-followups .epilogue-link { margin-top: 0; line-height: 1.3; }
 #recap-details > summary { padding-top: 4px; }
 .recap .recap-outcomes li[data-sent="true"] { border-color: #628d7d; background: #213e33; color: var(--signal); }
 .mystery-evidence, .mystery-answers { display: grid; gap: 7px; margin-block: 8px; }
@@ -322,6 +324,10 @@ noscript { display: block; margin: 20px; }
 #mystery-title { scroll-margin-top: 4px; }
 .epilogue-link { margin-top: 9px; border-color: #8d775c; color: #ffdfa9; }
 .epilogue-image { display: block; width: 100%; height: clamp(110px, 32vw, 205px); object-fit: cover; border-radius: 8px; margin-bottom: 9px; }
+#epilogue[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.epilogue-content { overflow-y: auto; overscroll-behavior: contain; }
+#pier-from-epilogue { width: 100%; min-height: 44px; background: #30271f; }
+#clock-resume { width: 100%; margin-top: 5px; border-color: #bb895d; color: #ffe1b5; white-space: normal; }
 #epilogue-transcript { margin: 10px 0; border: 1px solid #4b675b; border-left: 3px solid var(--signal); border-radius: 6px; padding: 9px; background: #1c302a; line-height: 1.55; white-space: pre-line; }
 #epilogue-replay { margin-top: 8px; }
 .pier-progress { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 5px 0 9px; color: var(--muted); }
@@ -518,6 +524,8 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
   .quick-active .narration, .quick-active .recap { scroll-margin: 0; }
   .scene[data-live-console="true"] .picture, .scene[data-result="true"] .picture { display: none; }
   .scene[data-result="true"] .recap { margin-top: 0; }
+  .scene[data-result="true"] #recap-actions .action { min-height: 44px; }
+  .scene[data-result="true"] #recap-actions .action-detail { display: none; }
   .broadcast[data-compact="true"] { padding: 7px; }
   .broadcast[data-compact="true"] .broadcast-heading { position: absolute; clip-path: inset(50%); }
   .broadcast[data-compact="true"] .routing-panel { margin: 4px 0 0; padding-top: 5px; }

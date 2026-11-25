@@ -699,5 +699,20 @@ const GAME_EN = {
   "같은 {0} · 이쪽 {1} / 건너편 {2}": "Same {0} · Here {1} / Other side {2}",
   "종소리": "chime",
   "방송 멘트": "broadcast opening",
-  "송출 1행동": "Broadcast · 1 action"
+  "송출 1행동": "Broadcast · 1 action",
+  "동시 송출 준비 계속 · 시간 유지": "Continue shared broadcast prep · No time cost",
+  "다시 계산한 {0}에 맞춰 동시 송출 준비를 이어갑니다.": "Continue preparing both broadcasts for the revised time, {0}.",
+  "편성표와 호출을 대조한다": "Compare the schedule with the call",
+  "자료실에서 건너편 방송 일지를 찾는다": "Find the other side’s broadcast log in the archive",
+  "건너편 윤서가 찾던 원본의 흔적이 자료실에 남아 있습니다.": "The archive holds a clue about the tape Yunseo was looking for.",
+  "방송 일지를 찾으러 자료실로": "Go to the archive for the broadcast log",
+  "두 단서를 수첩에서 나란히 확인합니다.": "Review both clues side by side in the journal.",
+  "달라진 응답을 들으러 옥상으로": "Go to the roof to hear the revised reply",
+  "옥상에서 건너편 교신을 예약합니다.": "Set the contact time at the rooftop transmitter.",
+  "윤서가 원본을 찾은 이유": "Why Yunseo wanted the tape",
+  "건너편 윤서는 왜 원본을 찾았을까요?": "Why was the other Yunseo looking for the tape?",
+  "한려 FM의 마지막 방송": "Hallyeo FM’s last broadcast",
+  "송출 중": "On air",
+  "선착장 외전 시작": "Start the pier epilogue",
+  "선착장 외전 이어하기": "Continue the pier epilogue"
 };

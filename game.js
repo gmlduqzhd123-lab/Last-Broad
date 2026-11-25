@@ -192,6 +192,7 @@ const newRun = () => ({
   receiverBand: 0, receiverTuned: false, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
   intent: '',
   clockReviewed: false,
+  onAirAt: 0,
 });
 
 function restoreGame(old) {
@@ -212,7 +213,7 @@ function restoreGame(old) {
     fresh.loop = Number.isSafeInteger(old.loop) && old.loop > 0 ? old.loop : 1;
     const previousLoop = old.previousLoop;
     if (Number.isSafeInteger(previousLoop?.loop) && previousLoop.loop === fresh.loop - 1 && Array.isArray(previousLoop.moments)) {
-      fresh.previousLoop = { loop: previousLoop.loop, moments: previousLoop.moments.filter((moment) =>
+      fresh.previousLoop = { loop: previousLoop.loop, intent: ['contact', 'connect'].includes(previousLoop.intent) ? previousLoop.intent : '', moments: previousLoop.moments.filter((moment) =>
         moment && Object.hasOwn(loopMarkers, moment.id) && Number.isInteger(moment.minute) && moment.minute > 0 && moment.minute <= LIMIT).slice(0, 2) };
     }
     if (fresh.epilogueSeen && old.pier) {
@@ -239,7 +240,7 @@ function restoreGame(old) {
       && ['play', 'expired', 'ending'].includes(previous.phase) && Array.isArray(previous.used)
       && (previous.phase !== 'ending' || Object.hasOwn(endings, previous.ending))) {
       fresh.run = { ...newRun(), ...previous };
-      if (!['contact', 'connect'].includes(fresh.run.intent)) fresh.run.intent = '';
+      if (!['contact', 'connect', 'mystery'].includes(fresh.run.intent)) fresh.run.intent = '';
       fresh.run.clockReviewed = previous.clockReviewed === true;
       if (!['voices', 'signal', 'both'].includes(fresh.run.console)) fresh.run.console = '';
       fresh.run.routes = emptyRoutes();
@@ -260,6 +261,9 @@ function restoreGame(old) {
         fresh.run.clip = '';
       }
       if (previous.phase === 'ending') {
+        const finalAction = fresh.run.log.findLast((entry) => entry?.kind === 'action');
+        const minute = previous.onAirAt || finalAction?.minute;
+        fresh.run.onAirAt = Number.isInteger(minute) && minute > 0 ? Math.min(minute, LIMIT - 1) : LIMIT - 1;
         fresh.run.storyReply = previous.storyReply === true && fresh.storyReplies.includes(previous.ending);
         const ending = endingFor(previous.ending, fresh.run.storyReply);
         fresh.run.clip = ending.clip;
@@ -294,6 +298,7 @@ const time = (elapsed) => elapsed === LIMIT ? '00:00' : '23:' + (52 + elapsed);
 const cartHere = (elapsed) => elapsed >= CART_ARRIVES && elapsed < CART_LEAVES;
 const epilogueUnlocked = () => game.unlocked.length === Object.keys(endings).length;
 const pierUnlocked = () => game.epilogueSeen && epilogueUnlocked();
+const needsMystery = () => knows('remoteRequest') && !game.storySolved;
 
 function reservationPlan() {
   const r = game.run;
@@ -315,6 +320,12 @@ function failedReservationMinute() {
   const failed = latestFailedReservation();
   const r = game.run;
   return r.tuneAt || !r.clockReviewed || reservationPlan().proposed === failed ? failed : 0;
+}
+
+function clockRetryIntent() {
+  if (game.run.intent === 'connect' || game.previousLoop?.intent === 'connect') return 'connect';
+  if (game.run.intent === 'contact' || game.previousLoop?.intent === 'contact') return 'contact';
+  return knows('routing') && game.unlocked.includes('signal') && !game.unlocked.includes('both') ? 'connect' : 'contact';
 }
 
 const canRadioCourier = () => knows('staffCall') && knows('label');
@@ -833,8 +844,9 @@ function finish(id, lead = {}) {
   const storyReply = game.storySolved && Object.hasOwn(storyEndings, id);
   if (storyReply && !game.storyReplies.includes(id)) game.storyReplies.push(id);
   const ending = endingFor(id, storyReply);
+  const onAirAt = Math.min(game.run.elapsed, LIMIT - 1);
   Object.assign(game.run, {
-    ending: id, storyReply, elapsed: LIMIT, phase: 'ending', message: ending.story, speaker: '', event: '', clip: ending.clip,
+    ending: id, storyReply, onAirAt, elapsed: LIMIT, phase: 'ending', message: ending.story, speaker: '', event: '', clip: ending.clip,
   });
   observe(ending.transcript);
   save();
@@ -976,15 +988,18 @@ function animateRewind(from) {
   cut.hidden = false;
 }
 
-function rewind() {
+function rewind(nextIntent) {
   if (!game.run.elapsed) return;
-  const from = game.run.elapsed;
+  const run = game.run;
+  const from = run.elapsed;
   stopSceneAudio();
   stopAmbience();
   game.nextQuestion = reviewQuestion();
-  game.previousLoop = { loop: game.loop, moments: loopMoments(game.run) };
+  const intent = run.intent === 'connect' || (run.dj && run.courier) ? 'connect' : run.intent === 'contact' ? 'contact' : '';
+  game.previousLoop = { loop: game.loop, intent, moments: loopMoments(run) };
   game.loop += 1;
   game.run = newRun();
+  if (nextIntent === 'mystery') game.run.intent = 'mystery';
   $('recap-details').open = false;
   $('action-history').open = false;
   update('rewind');
@@ -1163,6 +1178,15 @@ function choices() {
       : '연결표 확보. 다음 회차에는 윤서에게 방송실을 먼저 맡기세요.';
     offer('prepare-rewind', '다음 회차 준비하기', next, reviewNight, true, '시간 유지');
   }
+  if (r.intent === 'mystery' && needsMystery() && knows('remoteSlot')) {
+    offer('review-mystery', '편성표와 호출 대조하기', '두 단서를 수첩에서 나란히 확인합니다.', openMystery, true, '시간 유지');
+  }
+  if (r.intent === 'mystery' && game.storySolved && r.room !== 'roof' && r.elapsed < REPLY_WINDOW - 1) {
+    offer('hear-reply-roof', '달라진 응답을 들으러 옥상으로', '옥상에서 건너편 교신을 예약합니다.', () => {
+      r.intent = 'contact';
+      enter('roof');
+    }, true);
+  }
 
   if (r.room === 'studio') {
     if (r.elapsed === 1 && route?.next?.id !== 'plan-hall') {
@@ -1244,7 +1268,7 @@ function choices() {
     if (r.linked) {
       finalChoice('signal', '건너편 윤서에게 응답', r.syncMissed ? '콘솔을 연 뒤 마이크에 1행동을 씁니다.'
         : '옥상에서 그 목소리에 남은 방송 시간을 씁니다.', !canJoin);
-      if (!game.storySolved && mysteryEvidence.every(knows)) {
+      if (r.intent !== 'mystery' && !game.storySolved && mysteryEvidence.every(knows)) {
         offer('compare-schedules', '편성표와 호출 대조하기', '건너편 윤서가 순임의 원본을 찾는 이유를 확인합니다.', openMystery, false, '시간 유지');
       }
     }
@@ -1322,6 +1346,8 @@ function plannedObjective(r) {
   if (r.linked) {
     return r.dj && r.tape === 'delivered' && r.elapsed === REPLY_WINDOW ? '지금 윤서에게 동시 송출 신호를 보낸다' : '건너편 호출에 응답한다';
   }
+  if (r.intent === 'mystery' && !game.storySolved) return knows('remoteSlot')
+    ? '편성표와 호출을 대조한다' : '자료실에서 건너편 방송 일지를 찾는다';
   if (failedReservationMinute()) return '두 시계의 차이를 다시 확인한다';
   if (r.intent === 'connect') {
     if (!knows('routing')) return '자료실에서 두 채널 연결표를 찾는다';
@@ -1345,23 +1371,33 @@ function plannedObjective(r) {
 function openingPlan() {
   if (game.loop < 2 || !openingReceiverHere()) return null;
   const move = (goal, question, room, title, intent) => ({ goal, question, intent, action: { id: room, title, cost: '1행동', run: () => enter(room) } });
+  const mystery = () => knows('remoteSlot')
+    ? { goal: '편성표와 호출을 대조한다', question: '건너편 윤서는 왜 원본을 찾았을까요?', intent: 'mystery',
+      action: { id: 'review-mystery', title: '편성표와 호출 대조하기', cost: '시간 유지', run: openMystery } }
+    : move('자료실에서 건너편 방송 일지를 찾는다', '건너편 윤서가 찾던 원본의 흔적이 자료실에 남아 있습니다.', 'archive', '방송 일지를 찾으러 자료실로', 'mystery');
+  if (game.run.intent === 'mystery' && needsMystery()) return mystery();
   const failed = failedReservationMinute();
+  const retry = clockRetryIntent();
   if (failed) return { goal: '두 시계의 차이를 다시 확인한다', question: fmt('지난 {0} 예약에서는 잡음만 들렸습니다.', time(failed)),
-    option: 'recheck-clock', intent: 'contact' };
-  if (game.run.clockReviewed && reservationPlan().proposed) return move('새 가설을 옥상 송신기에서 시험한다',
+    option: 'recheck-clock', intent: retry };
+  const revised = game.run.clockReviewed && reservationPlan().proposed;
+  if (revised && retry === 'contact') return move('새 가설을 옥상 송신기에서 시험한다',
     '수첩에서 다시 계산한 시각을 옥상에서 예약하세요.', 'roof', '옥상 송신실로 이동', 'contact');
-  if (epilogueUnlocked() && !game.epilogueSeen) {
+  const resumeConnection = Boolean(revised && retry === 'connect');
+  if (!resumeConnection && epilogueUnlocked() && needsMystery()) return mystery();
+  if (!resumeConnection && epilogueUnlocked() && !game.epilogueSeen) {
     return { goal: '첫 교신의 원본을 확인한다', question: '23:52의 첫 교신에서 어떤 목소리가 들렸을까요?',
       action: { id: 'epilogue', title: '첫 교신의 원본 듣기', cost: '시간 유지', run: openEpilogue } };
   }
-  if (epilogueUnlocked()) return null;
+  if (!resumeConnection && epilogueUnlocked()) return null;
   const last = game.previousLoop?.moments.at(-1)?.id;
-  if (!game.unlocked.includes('both') && (game.unlocked.includes('signal') || last === 'syncMissed' || last === 'cue')) {
+  if (resumeConnection || (!game.unlocked.includes('both') && (game.unlocked.includes('signal') || last === 'syncMissed' || last === 'cue'))) {
+    const retryNote = resumeConnection ? fmt('다시 계산한 {0}에 맞춰 동시 송출 준비를 이어갑니다.', time(revised)) : '';
     if (!knows('routing')) return move('두 방송을 이을 방법을 찾는다', '두 채널은 어디에서 연결할 수 있을까요?', 'archive', '자료실로 이동', 'connect');
     if (!knows('label')) return move('미라에게 원본의 표식을 확인한다', '재호가 어느 상자에서 원본을 꺼내야 할까요?', 'archive', '자료실로 이동', 'connect');
     if (canRadioCourier()) return { goal: '방송실과 옥상의 일을 나눈다',
-      question: '내가 옥상에 있는 동안 누가 원본을 옮길까요?', option: 'radio-courier', intent: 'connect' };
-    return { goal: '윤서에게 방송실을 먼저 맡긴다', question: '방송실을 맡긴 뒤 복도의 재호를 만나면 제시간에 옥상에 갈 수 있습니다.',
+      question: retryNote || '내가 옥상에 있는 동안 누가 원본을 옮길까요?', option: 'radio-courier', intent: 'connect' };
+    return { goal: '윤서에게 방송실을 먼저 맡긴다', question: retryNote || '방송실을 맡긴 뒤 복도의 재호를 만나면 제시간에 옥상에 갈 수 있습니다.',
       option: 'assign-dj', intent: 'connect' };
   }
   if (!game.unlocked.includes('signal') && (game.unlocked.includes('voices') || knows('relay'))) {
@@ -1671,6 +1707,7 @@ function renderRecap() {
   const r = game.run;
   const show = !transmission && (r.review || r.phase !== 'play');
   $('recap').hidden = !show;
+  renderPierLinks();
   if (!show) return;
   $('recap-title').textContent = t(r.phase === 'ending' ? endings[r.ending].title : '이번 밤의 기록');
   const outcomes = $('recap-outcomes');
@@ -1688,6 +1725,10 @@ function renderRecap() {
     resultRow('건너편 윤서', replySent, '응답 완료', r.linked ? '교신 연결 · 응답 없음' : '응답하지 못함'),
   );
   $('recap-epilogue').hidden = !epilogueUnlocked() || r.phase === 'play' || game.epilogueSeen;
+  const mysteryAvailable = r.phase !== 'play' && needsMystery();
+  $('recap-mystery').hidden = !mysteryAvailable;
+  $('recap-mystery').setAttribute('aria-haspopup', String(knows('remoteSlot') ? 'dialog' : 'false'));
+  $('recap-followups').hidden = ['recap-mystery', 'recap-epilogue', 'recap-pier'].every((id) => $(id).hidden);
   const [minute, reason] = turningPoint();
   $('turning-time').textContent = time(minute);
   $('missed').textContent = t(reason);
@@ -1702,11 +1743,12 @@ function renderRecap() {
   $('observed').replaceChildren(...(notes.length ? notes.map(row) : [element('li', '아직 기록된 사건이 없습니다.')]));
   $('action-history').hidden = !r.log.length;
   $('action-record').replaceChildren(...r.log.map(row));
-  $('next-question').textContent = t(reviewQuestion());
+  $('next-question').textContent = t(mysteryAvailable && epilogueUnlocked() ? '건너편 윤서는 왜 원본을 찾았을까요?' : reviewQuestion());
 }
 
 function renderTimeline() {
   const r = game.run;
+  const minuteShown = transmission ? r.onAirAt : r.elapsed;
   const entries = [
     [0, '마지막 방송 준비'],
     [CART_ARRIVES, knows('bell') ? '현관 종 두 번 · 수레 도착' : '현관에서 어떤 소리가 날까?'],
@@ -1715,14 +1757,14 @@ function renderTimeline() {
     [LIMIT, '마지막 송출 종료'],
   ];
   $('timeline').replaceChildren(...entries.map(([minute, label]) => {
-    const entry = element('li', '', minute <= r.elapsed ? 'seen' : '');
-    if (minute === r.elapsed) entry.setAttribute('aria-current', 'time');
+    const entry = element('li', '', minute <= minuteShown ? 'seen' : '');
+    if (minute === minuteShown) entry.setAttribute('aria-current', 'time');
     entry.append(element('time', time(minute)), element('span', label));
     return entry;
   }));
   const previous = game.previousLoop;
-  $('timeline-comparison').hidden = !previous?.moments.length;
-  if (!previous?.moments.length) return;
+  $('timeline-comparison').hidden = Boolean(transmission) || !previous?.moments.length;
+  if ($('timeline-comparison').hidden) return;
   $('timeline-past-title').textContent = fmt('지난 {0}회차', previous.loop);
   $('timeline-current-title').textContent = fmt('이번 {0}회차', game.loop);
   const rows = (moments) => moments.map(({ id, minute }) => {
@@ -1859,6 +1901,7 @@ function renderActions(options) {
     const planned = connectionRoute();
     if (showLate) featured = available('signal') || available('go-reply') || available('voices') || lateRewind;
     else if (hasLiveCall()) featured = available('both') || available('signal') || available('voices');
+    else if (r.intent === 'mystery') featured = available('review-mystery') || available('hear-reply-roof') || available('read-airlog');
     else if (available('recheck-clock')) featured = (r.room === 'archive' && !knows('airlog') && available('read-airlog')) || available('recheck-clock');
     else if (planned && !planned.feasible) featured = available('prepare-rewind');
     else if (planned?.next) featured = available(planned.next.id);
@@ -1874,7 +1917,7 @@ function renderActions(options) {
   const featuredSlot = $('featured-action');
   featuredSlot.hidden = !featured;
   featuredSlot.replaceChildren(...(featured ? [actionButton({ ...featured, primary: true })] : []));
-  const rest = options.filter((option) => option !== featured && option !== openingAction && option !== consoleCommand
+  const rest = options.filter((option) => option !== featured && (!option.id || option.id !== openingAction?.id) && option !== consoleCommand
     && option !== lateAlt && !recapOptions.includes(option));
   $('actions').hidden = !rest.length;
   $('actions').replaceChildren(...rest.map((option) => actionButton({ ...option, primary: featured ? false : option.primary })));
@@ -1883,9 +1926,9 @@ function renderActions(options) {
 function render() {
   const r = game.run;
   const left = LIMIT - r.elapsed;
-  $('objective').textContent = t(objective());
-  $('clock').textContent = time(r.elapsed);
-  $('budget').textContent = fmt('남은 행동 {0}회', left);
+  $('objective').textContent = t(transmission ? '한려 FM의 마지막 방송' : objective());
+  $('clock').textContent = time(transmission ? r.onAirAt : r.elapsed);
+  $('budget').textContent = transmission ? t('송출 중') : fmt('남은 행동 {0}회', left);
   document.querySelector('.hud').dataset.urgent = String(left <= 2 && r.phase === 'play');
   $('beats').replaceChildren(...Array.from({ length: LIMIT }, (_, index) => element('span', '', index < left ? 'on' : '')));
   $('cycle').textContent = fmt('{0}회차', game.loop);
@@ -1930,8 +1973,6 @@ function render() {
 
   $('ending-count').textContent = game.unlocked.length + ' / ' + Object.keys(endings).length;
   $('epilogue-open').hidden = !epilogueUnlocked() || Boolean(transmission);
-  $('pier-open').hidden = !pierUnlocked() || Boolean(transmission);
-  $('pier-open').textContent = t(game.pier.completed ? '선착장 외전 다시 보기' : '선착장 외전');
   $('ending-list').replaceChildren(...Object.entries(endings).map(([id, ending], index) => {
     const item = element('li');
     if (!game.unlocked.includes(id)) {
@@ -2010,8 +2051,10 @@ function renderDeduction() {
   const reserved = reservationPlan();
   const onRoof = r.room === 'roof';
   const canTravel = reserved.proposed > r.elapsed + 1 && (!reserved.actual || reserved.actual > r.elapsed + 1);
+  const resumeConnection = r.phase === 'play' && r.elapsed === 0 && Boolean(failed) && r.clockReviewed && clockRetryIntent() === 'connect';
+  $('clock-resume').hidden = !resumeConnection;
   const apply = $('journal-reserve');
-  apply.hidden = !reserved.canApply || Boolean(failed && reserved.proposed === failed) || (!onRoof && !canTravel);
+  apply.hidden = resumeConnection || !reserved.canApply || Boolean(failed && reserved.proposed === failed) || (!onRoof && !canTravel);
   apply.dataset.command = onRoof ? 'reserve' : 'roof';
   apply.textContent = t(!onRoof ? '옥상 송신실로 이동 · 1행동'
     : reserved.actual ? '옥상 송신기의 예약 변경 · 1행동' : '옥상 송신기에서 예약하기 · 1행동');
@@ -2140,12 +2183,28 @@ function openMystery() {
   $('mystery-title').focus({ preventScroll: true });
 }
 
+function continueMystery() {
+  if (!needsMystery() || transmission || game.run.phase === 'play') return;
+  if (knows('remoteSlot')) openMystery();
+  else rewind('mystery');
+}
+
+function renderPierLinks() {
+  const pier = game.pier;
+  const label = pier.answer ? '선착장 외전 다시 보기' : pier.heard ? '선착장 외전 이어하기' : '선착장 외전 시작';
+  const available = pierUnlocked() && !transmission;
+  $('pier-open').hidden = !available;
+  $('recap-pier').hidden = !available || game.run.phase === 'play';
+  for (const id of ['pier-open', 'recap-pier', 'pier-from-epilogue']) $(id).textContent = t(label);
+}
+
 function openEpilogue() {
   if (!epilogueUnlocked() || transmission) return;
   game.epilogueSeen = true;
   save();
-  $('pier-open').hidden = false;
+  renderRecap();
   $('epilogue-transcript').textContent = t(epilogueTranscript);
+  $('epilogue').querySelector('.epilogue-content').scrollTop = 0;
   showGameDialog('epilogue');
   if (game.sound) playClip('epilogue');
 }
@@ -2195,11 +2254,11 @@ function takePierAction(id) {
     pier.answer = id;
     if (id === 'intercom') {
       pier.completed = true;
-      $('pier-open').textContent = t('선착장 외전 다시 보기');
       clip = 'pierAnswer';
     }
   } else return;
   save();
+  renderPierLinks();
   stopSceneAudio();
   renderPier();
   $('pier-narration').focus({ preventScroll: true });
@@ -2212,6 +2271,7 @@ function openPier() {
   if ($('epilogue').open) $('epilogue').close();
   renderPier();
   showGameDialog('pier');
+  $('pier').scrollTop = 0;
 }
 
 const shareMedia = {
@@ -2434,6 +2494,10 @@ $('journal-open').addEventListener('click', openJournal);
 $('quick-journal').addEventListener('click', openJournal);
 $('quick-review').addEventListener('click', reviewNight);
 $('journal-close').addEventListener('click', () => $('journal').close());
+$('clock-resume').addEventListener('click', () => {
+  $('journal').close();
+  $('opening-action').querySelector('button')?.focus({ preventScroll: true });
+});
 $('journal-reserve').addEventListener('click', ({ currentTarget }) => {
   journalCommand = currentTarget.dataset.command;
   $('journal').close();
@@ -2445,6 +2509,7 @@ $('journal-airlog').addEventListener('click', () => {
 $('record-close').addEventListener('click', () => $('record').close());
 $('epilogue-open').addEventListener('click', openEpilogue);
 $('recap-epilogue').addEventListener('click', openEpilogue);
+$('recap-mystery').addEventListener('click', continueMystery);
 $('epilogue-close').addEventListener('click', () => $('epilogue').close());
 $('epilogue-replay').addEventListener('click', () => playClip('epilogue'));
 $('epilogue').addEventListener('close', () => {
@@ -2452,10 +2517,12 @@ $('epilogue').addEventListener('close', () => {
   if (document.activeElement === document.body && !$('recap').hidden) $('recap').focus({ preventScroll: true });
 });
 $('pier-open').addEventListener('click', openPier);
+$('recap-pier').addEventListener('click', openPier);
 $('pier-from-epilogue').addEventListener('click', openPier);
 $('pier-close').addEventListener('click', () => $('pier').close());
 $('pier').addEventListener('close', () => {
-  if (document.activeElement === document.body && !$('pier-open').hidden) $('pier-open').focus({ preventScroll: true });
+  const trigger = $('recap').hidden ? $('pier-open') : $('recap-pier');
+  if (document.activeElement === document.body && !trigger.hidden) trigger.focus({ preventScroll: true });
 });
 $('settings-open').addEventListener('click', () => {
   renderMixSettings();

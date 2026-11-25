@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=17">
-  <script defer src="./locale.js?v=17"></script>
-  <script defer src="./game.js?v=17"></script>
+  <link rel="stylesheet" href="./style.css?v=18">
+  <script defer src="./locale.js?v=18"></script>
+  <script defer src="./game.js?v=18"></script>
 </head>
 <body>
   <header class="masthead">
@@ -137,7 +137,11 @@
               <ul id="recap-outcomes" class="recap-outcomes" aria-label="방송 결과" data-label="방송 결과" hidden></ul>
               <p class="recap-question" id="next-question"></p>
               <div id="recap-actions"></div>
-              <button class="utility epilogue-link" id="recap-epilogue" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
+              <div class="recap-followups" id="recap-followups" hidden>
+                <button class="utility epilogue-link" id="recap-mystery" type="button" data-text="윤서가 원본을 찾은 이유" hidden>윤서가 원본을 찾은 이유</button>
+                <button class="utility epilogue-link" id="recap-epilogue" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
+                <button class="utility epilogue-link" id="recap-pier" type="button" aria-haspopup="dialog" hidden></button>
+              </div>
               <details id="recap-details">
                 <summary data-text="이번 회차의 사건 기록">이번 회차의 사건 기록</summary>
                 <div class="turning-point" id="turning-point">
@@ -278,6 +282,7 @@
         <ul id="paired-clocks"></ul>
       </div>
       <div id="retry-hypothesis"></div>
+      <button type="button" class="utility" id="clock-resume" hidden data-text="동시 송출 준비 계속 · 시간 유지">동시 송출 준비 계속 · 시간 유지</button>
       <button type="button" class="utility" id="journal-airlog" data-text="자료실로 이동해 방송 일지 확인 · 1행동" hidden>자료실로 이동해 방송 일지 확인 · 1행동</button>
       <p class="note evidence-instruction" data-text="두 기록에서 같은 사건을 하나씩 골라 연결하세요.">두 기록에서 같은 사건을 하나씩 골라 연결하세요.</p>
       <div id="clock-evidence" class="clock-evidence"></div>
@@ -309,12 +314,14 @@
   </dialog>
   <dialog id="epilogue" aria-labelledby="epilogue-title">
     <div class="panel-heading"><h2 id="epilogue-title" data-text="에필로그 · 23:52">에필로그 · 23:52</h2><button type="button" class="utility" id="epilogue-close" data-text="닫기">닫기</button></div>
-    <img class="epilogue-image" src="./studio.webp" alt="" width="1672" height="941" loading="lazy">
-    <p class="note" data-text="꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.">꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.</p>
-    <button class="utility" id="epilogue-replay" type="button" data-text="첫 교신 다시 듣기">첫 교신 다시 듣기</button>
-    <blockquote id="epilogue-transcript"></blockquote>
-    <p class="note" data-text="건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.">건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.</p>
-    <button class="utility epilogue-link" id="pier-from-epilogue" type="button" aria-haspopup="dialog" data-text="선착장 외전 열기">선착장 외전 열기</button>
+    <div class="epilogue-content">
+      <img class="epilogue-image" src="./studio.webp" alt="" width="1672" height="941" loading="lazy">
+      <p class="note" data-text="꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.">꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.</p>
+      <button class="utility" id="epilogue-replay" type="button" data-text="첫 교신 다시 듣기">첫 교신 다시 듣기</button>
+      <blockquote id="epilogue-transcript"></blockquote>
+      <p class="note" data-text="건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.">건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.</p>
+    </div>
+    <button class="utility epilogue-link" id="pier-from-epilogue" type="button" aria-haspopup="dialog"></button>
   </dialog>
   <dialog id="pier" aria-labelledby="pier-title">
     <div class="panel-heading"><h2 id="pier-title" data-text="선착장 · 자정 이후">선착장 · 자정 이후</h2><button type="button" class="utility" id="pier-close" data-text="닫기">닫기</button></div>
