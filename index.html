@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=13">
-  <script defer src="./locale.js?v=13"></script>
-  <script defer src="./game.js?v=13"></script>
+  <link rel="stylesheet" href="./style.css?v=14">
+  <script defer src="./locale.js?v=14"></script>
+  <script defer src="./game.js?v=14"></script>
 </head>
 <body>
   <header class="masthead">
@@ -58,6 +58,11 @@
         <span id="clock">23:52</span>
         <span id="budget">남은 행동 8회</span>
         <div class="beats" id="beats" aria-hidden="true"></div>
+      </div>
+      <p class="rewind-memory" id="rewind-memory" role="status" hidden></p>
+      <div class="rewind-cut" id="rewind-cut" aria-hidden="true" hidden>
+        <span class="on-air">ON AIR</span>
+        <span class="rewind-time">↶ <span id="rewind-clock"></span></span>
       </div>
     </section>
 
@@ -105,6 +110,13 @@
               <div id="story"></div>
               <p id="event" class="scene-event" hidden></p>
             </div>
+            <section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
+              <div class="panel-heading">
+                <h3 id="radio-exchange-title" data-text="23:57 · 두 무전">23:57 · 두 무전</h3>
+                <button class="utility" id="exchange-replay" type="button" data-text="두 무전 다시 듣기">두 무전 다시 듣기</button>
+              </div>
+              <ol id="exchange-lines"></ol>
+            </section>
             <section class="transmission" id="transmission" aria-labelledby="transmission-title" hidden>
               <div class="transmission-stage">
                 <img id="transmission-image" src="./studio.webp" alt="" width="1000" height="563">

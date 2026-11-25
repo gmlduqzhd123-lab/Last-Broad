@@ -50,6 +50,11 @@ h1 em { color: var(--accent); font-style: normal; }
 .beats span.on { background: #dca76b; }
 .hud[data-urgent="true"] { border-color: #a96e59; background: #332821; }
 .hud[data-urgent="true"] #clock, .hud[data-urgent="true"] .mission strong { color: #ffd0ae; }
+.rewind-cut { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 clamp(12px, 4vw, 30px); border: 1px solid #ac7456; border-radius: inherit; background: #201b1b; pointer-events: none; }
+.rewind-cut .on-air { border-color: #795251; color: #ddbab5; background: #362524; }
+.rewind-cut[data-departing="true"] .on-air { border-color: #fa897d; background: #701e21; color: #fff3eb; box-shadow: 0 0 17px #e95c4d66; }
+.rewind-time { color: var(--accent); font: 700 clamp(1.55rem, 4vw, 2.15rem)/1 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rewind-memory { grid-column: 1 / -1; padding: 4px 8px; border-inline-start: 3px solid var(--accent); border-radius: 4px; background: #30271f; color: #ffe1b5; font-size: clamp(.75rem, 3.75vw, .875rem); line-height: 1.4; }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(238px, 302px); align-items: start; gap: 14px; }
 .play, .side { min-width: 0; display: grid; gap: 13px; align-content: start; }
@@ -79,6 +84,15 @@ h1 em { color: var(--accent); font-style: normal; }
 .dialogue.radio { background: #20312e; border-left-color: var(--signal); }
 .dialogue.radio strong { color: var(--signal); }
 .scene-event { margin-top: 9px; border: 1px solid #4c6860; border-radius: 7px; color: #bfefdf; background: #182925; padding: 9px 10px; font-size: .9rem; white-space: pre-line; line-height: 1.57; }
+.radio-exchange { margin-top: 10px; padding: 9px; border: 1px solid #4c6860; border-radius: 7px; background: #172421; }
+.radio-exchange ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.radio-exchange li { --channel: #ffd5a0; position: relative; padding: 7px 8px 7px 25px; border: 1px solid #45554d; border-radius: 5px; background: #1c2926; }
+.radio-exchange li + li { --channel: #a6ead5; }
+.radio-exchange li::before { content: ''; position: absolute; top: 14px; left: 9px; width: 8px; height: 8px; border: 1px solid #92a29a; border-radius: 50%; }
+.radio-exchange li[aria-current="true"] { border-color: var(--channel); }
+.radio-exchange li[aria-current="true"]::before { border-color: var(--channel); background: var(--channel); box-shadow: 0 0 9px var(--channel); }
+.radio-exchange li strong { color: var(--channel); font-size: .825rem; }
+.radio-exchange li p { margin-top: 2px; font-size: .9rem; line-height: 1.45; white-space: pre-line; }
 .plan { margin-top: 12px; padding: 8px 11px; color: #ffe1b5; background: #30271f; border: 1px solid #5d4936; border-radius: 7px; font-size: .91rem; line-height: 1.52; white-space: pre-line; }
 .listen { justify-self: start; min-height: 38px; padding-block: 5px; color: var(--signal); }
 .replay:not(:empty) { margin-top: 8px; }
@@ -185,6 +199,7 @@ noscript { display: block; margin: 20px; }
 @media (max-width: 360px) {
   .picture { height: 106px; }
   .scene[data-intro="true"] .context { display: none; }
+  .hud:has(.rewind-memory:not([hidden])) .mission .label { position: absolute; clip-path: inset(50%); }
 }
 
 /* Clock evidence, broadcast controls, and the loop review. */
