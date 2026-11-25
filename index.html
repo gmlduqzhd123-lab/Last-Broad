@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=7">
-  <script defer src="./locale.js?v=7"></script>
-  <script defer src="./game.js?v=7"></script>
+  <link rel="stylesheet" href="./style.css?v=8">
+  <script defer src="./locale.js?v=8"></script>
+  <script defer src="./game.js?v=8"></script>
 </head>
 <body>
   <header class="masthead">
@@ -161,12 +161,20 @@
         <section class="panel side-panel">
           <div class="panel-heading"><h2 data-text="이번 밤">이번 밤</h2><span class="cycle" id="cycle">1회차</span></div>
           <ol id="timeline" class="timeline"></ol>
+          <section class="timeline-comparison" id="timeline-comparison" aria-labelledby="comparison-title" hidden>
+            <h3 id="comparison-title" data-text="지난 밤과 이번 밤">지난 밤과 이번 밤</h3>
+            <h4 id="timeline-past-title"></h4>
+            <ol class="timeline" id="timeline-past"></ol>
+            <h4 id="timeline-current-title"></h4>
+            <ol class="timeline" id="timeline-current"></ol>
+          </section>
           <p class="note" data-text="이동하거나 조사할 때 1분이 흐릅니다.">이동하거나 조사할 때 1분이 흐릅니다.</p>
         </section>
         <section class="panel side-panel">
           <div class="panel-heading"><h2 data-text="결말 기록">결말 기록</h2><span id="ending-count">0 / 3</span></div>
           <ul id="ending-list" class="endings"></ul>
           <button class="utility epilogue-link" id="epilogue-open" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
+          <button class="utility epilogue-link" id="pier-open" type="button" aria-haspopup="dialog" data-text="선착장 외전" hidden>선착장 외전</button>
         </section>
         <button class="utility rewind" id="rewind" type="button" data-text="되감기 검토" hidden>되감기 검토</button>
         <button class="utility share-open" id="share-open" type="button" data-text="소개 영상 · 공유" aria-haspopup="dialog">소개 영상 · 공유</button>
@@ -219,6 +227,17 @@
     <button class="utility" id="epilogue-replay" type="button" data-text="첫 교신 다시 듣기">첫 교신 다시 듣기</button>
     <blockquote id="epilogue-transcript"></blockquote>
     <p class="note" data-text="건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.">건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.</p>
+    <button class="utility epilogue-link" id="pier-from-epilogue" type="button" aria-haspopup="dialog" data-text="선착장 외전 열기">선착장 외전 열기</button>
+  </dialog>
+  <dialog id="pier" aria-labelledby="pier-title">
+    <div class="panel-heading"><h2 id="pier-title" data-text="선착장 · 자정 이후">선착장 · 자정 이후</h2><button type="button" class="utility" id="pier-close" data-text="닫기">닫기</button></div>
+    <img class="epilogue-image" src="./pier.webp" alt="" width="1279" height="720" loading="lazy">
+    <div class="pier-progress"><span id="pier-clock"></span><span id="pier-budget"></span></div>
+    <p id="pier-narration" tabindex="-1" aria-live="polite"></p>
+    <div id="pier-replay"></div>
+    <ul class="pier-notes" id="pier-notes" aria-label="선착장에서 확인한 단서" data-label="선착장에서 확인한 단서"></ul>
+    <p class="note" id="pier-prompt"></p>
+    <div id="pier-actions" class="pier-actions"></div>
   </dialog>
   <dialog id="share" aria-labelledby="share-title">
     <div class="panel-heading"><h2 id="share-title" data-text="소개 영상 · 공유">소개 영상 · 공유</h2><button type="button" class="utility" id="share-close" data-text="닫기">닫기</button></div>

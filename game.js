@@ -7,6 +7,29 @@ const REPLY_WINDOW = 5;
 const TRANSMISSION_CUT = 1500;
 const TRANSMISSION_LENGTH = 7600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
+const PIER_LIMIT = 4;
+const cartArrived = '높은 종, 낮은 종. 23:54에 재호의 수레가 들어온다.';
+const cartDeparted = '재호가 남은 상자를 차에 싣는다. 복도가 비었다.';
+const tapeDelivered = '재호의 무전 “윤서 씨한테 원본 전달했어요. 이제 옥상만 남았죠?”';
+const contactOpened = '예약한 시각에 건너편 채널이 열렸다.';
+const contactMissed = '예약 시각에 잡음만 들린다. 건너편 교신은 이미 지나갔다.';
+const loopMarkers = {
+  cartArrived: [cartArrived, '현관 종 두 번 · 수레 도착', 'movement'],
+  movement: ['이동 · {0}', '방송국 안에서 이동', 'movement'],
+  cartDeparted: [cartDeparted, '재호의 수레 출발', 'tape'],
+  tapeDelivered: [tapeDelivered, '재호가 방송실에 원본 전달', 'tape'],
+  tapeFound: ['수레의 상자 확인', '수레에서 원본을 찾았다', 'tape'],
+  radio: ['무전으로 재호에게 부탁', '재호에게 무전', 'tape'],
+  courier: ['재호에게 원본 운반 부탁', '복도에서 재호에게 원본을 맡겼다', 'tape'],
+  interview: ['테이프 재생하기', '순임의 인터뷰를 송출했다', 'tape'],
+  reserve: ['교신 예약 확정 · {0}', '옥상에 교신을 예약했다', 'contact'],
+  reschedule: ['교신 예약 변경 · {0} → {1}', '옥상 교신 예약을 바꿨다', 'contact'],
+  contactOpened: [contactOpened, '건너편 교신이 열렸다', 'contact'],
+  contactMissed: [contactMissed, '예약한 시각에 잡음만 들렸다', 'contact'],
+  cue: ['동시 송출 신호 보내기', '두 방송에 신호를 보냈다', 'contact'],
+};
+
+const markerByEvent = new Map(Object.entries(loopMarkers).map(([id, [event]]) => [event, id]));
 const receiverBands = [
   { label: '한려 FM', state: '방송 대기', caption: '[낮은 전기음] 한려 FM. 마지막 방송을 준비하고 있습니다.', wave: [21, 35, 24, 40, 54, 25, 33, 20] },
   { label: '직원 무전', state: '무전 수신', caption: '[짧은 잡음] 재호입니다. 호출할 땐 “현관, 응답”이라고 해 주세요.', wave: [12, 48, 22, 55, 28, 65, 19, 36] },
@@ -18,16 +41,17 @@ const hypotheses = {
   faster: { label: '건너편이 1분 빠르다', local: 5 },
 };
 const evidence = {
-  localBell: { clue: 'bell', side: 'local', event: 'bell', time: '23:54', label: '복도 현관 종', detail: '높은 종 · 낮은 종' },
+  localBell: { clue: 'bell', side: 'local', event: 'bell', time: '23:54', label: '복도 현관 종', detail: '[높은 종 → 낮은 종]', clip: 'localBell', replay: '현관 종 재생' },
   localOpening: { clue: 'onAir', side: 'local', event: 'onAir', time: '23:55', label: '방송실 오프닝', detail: '“비 오는 항구의 밤입니다.”' },
+  remoteBell: { clue: 'relay', side: 'remote', event: 'bell', time: '23:55', label: '건너편 수신 녹음', detail: '[높은 종 → 낮은 종]', clip: 'distantBell', replay: '수신 녹음 재생' },
   remoteOpening: { clue: 'airlog', side: 'remote', event: 'onAir', time: '23:56', label: '건너편 방송 일지', detail: '“비 오는 항구의 밤입니다.”' },
-  remoteBell: { clue: 'relay', side: 'remote', event: 'bell', time: '23:55', label: '건너편 수신 녹음', detail: '높은 종 · 낮은 종' },
 };
 const voices = {
   opening: './audio/opening.wav',
   call: './audio/call.wav',
   delivery: './audio/delivery.wav',
   distantBell: './audio/distant-bell.wav',
+  localBell: './audio/local-bell.wav',
   onAir: './audio/harbor-opening.wav',
   voices: './audio/sunim.wav',
   signal: './audio/ending-signal.wav',
@@ -40,6 +64,8 @@ const voices = {
   signalRevealed: './audio/ending-signal-revealed.wav',
   bothRevealed: './audio/two-nights-revealed.wav',
   epilogue: './audio/epilogue.wav',
+  pierCall: './audio/pier-call.wav',
+  pierAnswer: './audio/pier-answer.wav',
 };
 const rooms = {
   studio: { name: '방송실', floor: '2층', art: './studio.webp', arrival: '진행자 윤서가 콘솔 너머로 고개를 든다. 부두의 불빛이 창에 비친다.' },
@@ -73,6 +99,19 @@ const callWords = '“여기는 한려 FM. 아직 듣고 있는 사람 있나요
 const callQuestion = '건너편 윤서 “그쪽엔 순임 씨 원본이 아직 있어요?”';
 const epilogueTranscript = '“거긴 아직 23시 52분이죠? 여기선 마지막 방송이 이미 끝났어요.”\n[잡음이 걷힌다.]\n“그쪽엔 아직 시간이 있죠? 순임 씨 목소리, 그 방송에 실어 줘요.”';
 const mysteryEvidence = ['remoteSlot', 'remoteRequest'];
+const pierOpening = '자정이 지난 선착장. 마지막 방송을 듣던 당신 곁에는 휴대용 라디오와 대합실 스피커가 있다.';
+const pierCall = '라디오에서 순임의 마지막 인사가 흐른다. 기척도 없는 부두에서 두 번째 목소리가 들린다.\n“아직 여기서 듣고 있어요.”';
+const pierObservations = {
+  radio: ['라디오를 꺼 보기', '라디오 화면이 어두워진 뒤에도 “아직 듣고 있어요”가 한 번 더 들린다. 목소리는 대합실 쪽에서 가까워진다.'],
+  intercom: ['대합실 인터폰 확인', '대합실 스피커의 녹색 수신등이 깜박인다. 옆 당직표에는 오늘 선착장 당직자 이름이 적혀 있다. 은주.'],
+  boat: ['정박한 배 살피기', '배에서는 두 줄의 계류 밧줄 사이로 물결 소리만 들린다. 무전 장치와 조타실 화면은 꺼져 있다.'],
+};
+const pierAnswers = {
+  intercom: ['대합실 인터폰에 답하기', '당직자 은주가 대합실 인터폰을 들어 올린다.\n“순임 씨 아버님은 비가 오면 늘 이 자리에 계셨어요. 오늘은 제가 그 자리에서 들었어요.”\n은주가 방송실에 전해 달라며 수신 기록에 시각을 적는다. 00:04.'],
+  tower: ['옥상 송신기에 답하기', '송신기 쪽 주파수에는 정적만 남아 있다. 그러는 동안 부두 가까이에서 의자 끄는 소리가 들린다.'],
+  boat: ['정박한 배에 답하기', '선박 호출에는 답이 오지 않는다. 항구에 남은 목소리의 출처를 다시 살펴볼 수 있다.'],
+};
+const newPierRun = () => ({ heard: false, checked: [], answer: '', completed: false });
 
 const endings = {
   voices: {
@@ -131,8 +170,9 @@ const newRun = () => ({
 
 function loadGame() {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 7, loop: 1, known: ['echo'], unlocked: [], sound: false,
+  const fresh = { version: 8, loop: 1, known: ['echo'], unlocked: [], sound: false,
     storySolved: false, storyReplies: [], epilogueSeen: false,
+    previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
   try {
     const old = JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -145,6 +185,20 @@ function loadGame() {
     }
     fresh.epilogueSeen = fresh.unlocked.length === Object.keys(endings).length && old.epilogueSeen === true;
     fresh.loop = Number.isSafeInteger(old.loop) && old.loop > 0 ? old.loop : 1;
+    const previousLoop = old.previousLoop;
+    if (Number.isSafeInteger(previousLoop?.loop) && previousLoop.loop === fresh.loop - 1 && Array.isArray(previousLoop.moments)) {
+      fresh.previousLoop = { loop: previousLoop.loop, moments: previousLoop.moments.filter((moment) =>
+        moment && Object.hasOwn(loopMarkers, moment.id) && Number.isInteger(moment.minute) && moment.minute > 0 && moment.minute <= LIMIT).slice(0, 2) };
+    }
+    if (fresh.epilogueSeen && old.pier) {
+      const pier = fresh.pier;
+      pier.heard = old.pier.heard === true;
+      if (pier.heard && Array.isArray(old.pier.checked)) {
+        pier.checked = [...new Set(old.pier.checked.filter((id) => Object.hasOwn(pierObservations, id)))].slice(0, 2);
+      }
+      if (pier.checked.length === 2 && Object.hasOwn(pierAnswers, old.pier.answer)) pier.answer = old.pier.answer;
+      pier.completed = old.pier.completed === true || pier.answer === 'intercom';
+    }
     fresh.sound = Boolean(old.sound);
     if (!requested && old.language === 'en') fresh.language = 'en';
     if (Object.hasOwn(hypotheses, old.hypothesis)) fresh.hypothesis = old.hypothesis;
@@ -189,6 +243,7 @@ const learn = (id) => { if (!knows(id)) game.known.push(id); };
 const time = (elapsed) => elapsed === LIMIT ? '00:00' : '23:' + (52 + elapsed);
 const cartHere = (elapsed) => elapsed >= CART_ARRIVES && elapsed < CART_LEAVES;
 const epilogueUnlocked = () => game.unlocked.length === Object.keys(endings).length;
+const pierUnlocked = () => game.epilogueSeen && epilogueUnlocked();
 
 function reservationPlan() {
   const r = game.run;
@@ -325,7 +380,7 @@ function onMinute() {
   const events = [];
   if (r.elapsed === CART_ARRIVES) {
     learn('bell');
-    events.push('높은 종, 낮은 종. 23:54에 재호의 수레가 들어온다.');
+    events.push(cartArrived);
     if (r.room === 'hall' && knows('receiver')) events.push('탁상 수신기에서 잡은 소리와 같다.');
     cue = 'bell';
   }
@@ -340,15 +395,15 @@ function onMinute() {
       r.tape = 'delivered';
       if (r.courierBriefedEarly) events.push('재호가 파란 스티커가 붙은 상자에서 원본을 꺼내 윤서의 콘솔 위에 놓는다.');
       if (r.courierByRadio) events.push('무전으로 부탁한 원본이 윤서의 콘솔에 도착했다.');
-      events.push('재호의 무전 “윤서 씨한테 원본 전달했어요. 이제 옥상만 남았죠?”');
+      events.push(tapeDelivered);
       r.clip = 'delivery';
     } else {
-      events.push('재호가 남은 상자를 차에 싣는다. 복도가 비었다.');
+      events.push(cartDeparted);
     }
   }
   if (r.tuneAt === r.elapsed) {
     r.linked = r.elapsed === REPLY_WINDOW;
-    events.push(r.linked ? '예약한 시각에 건너편 채널이 열렸다.' : '예약 시각에 잡음만 들린다. 건너편 교신은 이미 지나갔다.');
+    events.push(r.linked ? contactOpened : contactMissed);
     if (r.linked) {
       learn('remoteRequest');
       events.push(callWords, callQuestion);
@@ -364,7 +419,7 @@ function onMinute() {
     events.push('송출 종료. 붉은 불이 꺼지고 모든 주파수가 조용해진다.');
   }
   r.event = events.join('\n');
-  events.forEach(observe);
+  events.forEach((event) => observe(event));
   return cue;
 }
 
@@ -472,10 +527,22 @@ function reviewNight() {
   $('recap').focus({ preventScroll: true });
 }
 
+function loopMoments(run) {
+  const byTopic = {};
+  for (const entry of run.log) {
+    const id = markerByEvent.get(entry?.text);
+    if (!id || !Number.isInteger(entry.minute) || entry.minute < 1 || entry.minute > LIMIT) continue;
+    byTopic[loopMarkers[id][2]] = { id, minute: entry.minute };
+  }
+  const meaningful = [byTopic.tape, byTopic.contact].filter(Boolean);
+  return (meaningful.length ? meaningful : [byTopic.movement].filter(Boolean)).sort((a, b) => a.minute - b.minute);
+}
+
 function rewind() {
   if (!game.run.elapsed) return;
   stopClip();
   game.nextQuestion = reviewQuestion();
+  game.previousLoop = { loop: game.loop, moments: loopMoments(game.run) };
   game.loop += 1;
   game.run = newRun();
   $('action-history').open = false;
@@ -663,7 +730,9 @@ function choices() {
 function context() {
   const r = game.run;
   if (r.room === 'hall') {
-    if (r.elapsed < CART_ARRIVES) return ['수레 도착 전', '문 밖은 텅 비어 있다. 바퀴 소리가 들려올 때까지 확인할 상자는 없다.'];
+    if (r.elapsed < CART_ARRIVES) return ['수레 도착 전', game.loop === 1
+      ? '수레는 아직 밖에 있다. 현관 종이 울리면 들어온 상자를 살펴보자.'
+      : '문 밖은 텅 비어 있다. 바퀴 소리가 들려올 때까지 확인할 상자는 없다.'];
     if (cartHere(r.elapsed)) return ['수레가 들어왔다', r.courierBriefedEarly
       ? '재호가 파란 스티커가 붙은 상자를 먼저 빼 둔다.' : '재호가 가져온 상자 세 개가 현관 오른쪽에 놓여 있다.'];
     return ['수레 출발', '바퀴 자국만 남아 있다. 남은 상자는 이미 차에 실렸다.'];
@@ -748,6 +817,7 @@ function renderScene() {
   scene.dataset.room = r.room;
   scene.dataset.phase = r.phase;
   scene.dataset.intro = String(intro);
+  scene.dataset.arrived = String(game.loop === 1 && r.room === 'hall' && r.phase === 'play' && r.elapsed === CART_ARRIVES);
   scene.dataset.transmitting = String(Boolean(transmission));
   $('room-floor').textContent = t(r.phase === 'play' ? room.floor : '한려 FM');
   $('room-name').textContent = t(r.phase === 'play' ? room.name
@@ -782,8 +852,10 @@ function renderScene() {
   $('replay').hidden = Boolean(transmission);
   $('replay').replaceChildren(...replay);
   const plan = nextPlan();
-  $('plan').hidden = !plan || r.phase !== 'play' || r.review;
-  $('plan').textContent = t(plan);
+  const lastMoment = intro ? game.previousLoop?.moments.at(-1) : null;
+  $('plan').hidden = !(plan || lastMoment) || r.phase !== 'play' || r.review;
+  const previous = lastMoment ? fmt('지난 밤 {0} · {1}', time(lastMoment.minute), t(loopMarkers[lastMoment.id][1])) : '';
+  $('plan').textContent = [previous, t(plan)].filter(Boolean).join('\n');
 }
 
 function renderBroadcast() {
@@ -965,6 +1037,20 @@ function renderTimeline() {
     entry.append(element('time', time(minute)), element('span', label));
     return entry;
   }));
+  const previous = game.previousLoop;
+  $('timeline-comparison').hidden = !previous?.moments.length;
+  if (!previous?.moments.length) return;
+  $('timeline-past-title').textContent = fmt('지난 {0}회차', previous.loop);
+  $('timeline-current-title').textContent = fmt('이번 {0}회차', game.loop);
+  const rows = (moments) => moments.map(({ id, minute }) => {
+    const row = element('li');
+    row.dataset.marker = id;
+    row.append(element('time', time(minute)), element('span', loopMarkers[id][1]));
+    return row;
+  });
+  $('timeline-past').replaceChildren(...rows(previous.moments));
+  const current = rows(loopMoments(r));
+  $('timeline-current').replaceChildren(...(current.length ? current : [element('li', '이번 밤의 행동을 기다리는 중', 'timeline-empty')]));
 }
 
 function render() {
@@ -1025,6 +1111,8 @@ function render() {
 
   $('ending-count').textContent = game.unlocked.length + ' / ' + Object.keys(endings).length;
   $('epilogue-open').hidden = !epilogueUnlocked() || Boolean(transmission);
+  $('pier-open').hidden = !pierUnlocked() || Boolean(transmission);
+  $('pier-open').textContent = t(game.pier.completed ? '선착장 외전 다시 보기' : '선착장 외전');
   $('ending-list').replaceChildren(...Object.entries(endings).map(([id, ending], index) => {
     const item = element('li');
     if (!game.unlocked.includes(id)) {
@@ -1071,6 +1159,11 @@ function renderDeduction() {
         $('clock-evidence').querySelector('[data-evidence="' + id + '"]').focus({ preventScroll: true });
       });
       column.append(card);
+      if (item.clip) {
+        const replay = listenButton(item.clip, item.replay);
+        replay.dataset.evidenceAudio = id;
+        column.append(replay);
+      }
     }
     return column;
   }));
@@ -1198,10 +1291,76 @@ function openEpilogue() {
   if (!epilogueUnlocked() || transmission) return;
   game.epilogueSeen = true;
   save();
+  $('pier-open').hidden = false;
   stopClip();
   $('epilogue-transcript').textContent = t(epilogueTranscript);
   $('epilogue').showModal();
   if (game.sound) playClip('epilogue');
+}
+
+const pierMinutes = ({ heard, checked, answer }) => Number(heard) + checked.length + Number(Boolean(answer));
+
+function renderPier() {
+  const pier = game.pier;
+  const minute = pierMinutes(pier);
+  $('pier-clock').textContent = `00:0${minute}`;
+  $('pier-budget').textContent = fmt('남은 행동 {0}회', PIER_LIMIT - minute);
+  const lastObservation = pierObservations[pier.checked.at(-1)];
+  $('pier-narration').textContent = t(pier.answer ? pierAnswers[pier.answer][1] : lastObservation?.[1] || (pier.heard ? pierCall : pierOpening));
+  const replay = pier.answer === 'intercom' ? listenButton('pierAnswer', '은주의 응답 다시 듣기')
+    : pier.heard && !pier.answer ? listenButton('pierCall', '선착장에 들린 목소리 재생') : null;
+  $('pier-replay').replaceChildren(...(replay ? [replay] : []));
+  const earlierNotes = pier.answer ? pier.checked : pier.checked.slice(0, -1);
+  $('pier-notes').hidden = !earlierNotes.length;
+  $('pier-notes').replaceChildren(...earlierNotes.map((id) => element('li', pierObservations[id][1])));
+  const choosing = !pier.answer && pier.checked.length === 2;
+  $('pier-prompt').textContent = t(choosing ? '마지막 행동입니다. 이 목소리는 어디에서 왔을까요?'
+    : pier.heard && !pier.answer ? '목소리의 출처를 확인할 단서를 두 곳에서 찾으세요.' : '');
+  const options = pier.answer ? [['restart', '자정부터 다시 조사하기']]
+    : !pier.heard ? [['listen', '선착장 라디오 켜기']]
+      : Object.entries(choosing ? pierAnswers : pierObservations)
+        .filter(([id]) => choosing || !pier.checked.includes(id)).map(([id, [title]]) => [id, title]);
+  $('pier-actions').replaceChildren(...options.map(([id, label]) => {
+    const button = element('button', label, 'utility');
+    button.type = 'button';
+    button.dataset.pierAction = id;
+    button.addEventListener('click', () => takePierAction(id));
+    return button;
+  }));
+}
+
+function takePierAction(id) {
+  if (!$('pier').open) return;
+  const pier = game.pier;
+  let clip = '';
+  if (pier.answer && id === 'restart') game.pier = { ...newPierRun(), completed: pier.completed };
+  else if (!pier.heard && id === 'listen') {
+    pier.heard = true;
+    clip = 'pierCall';
+  } else if (pier.heard && !pier.answer && pier.checked.length < 2 && Object.hasOwn(pierObservations, id) && !pier.checked.includes(id)) {
+    pier.checked.push(id);
+  } else if (!pier.answer && pier.checked.length === 2 && Object.hasOwn(pierAnswers, id)) {
+    pier.answer = id;
+    if (id === 'intercom') {
+      pier.completed = true;
+      $('pier-open').textContent = t('선착장 외전 다시 보기');
+      clip = 'pierAnswer';
+    }
+  } else return;
+  save();
+  stopClip();
+  renderPier();
+  $('pier-narration').focus({ preventScroll: true });
+  $('pier-narration').scrollIntoView({ block: 'nearest' });
+  if (game.sound && clip) playClip(clip);
+}
+
+function openPier() {
+  if (!pierUnlocked() || transmission) return;
+  if ($('epilogue').open) $('epilogue').close();
+  stopClip();
+  renderPier();
+  $('pier').showModal();
 }
 
 const shareMedia = {
@@ -1253,6 +1412,13 @@ $('epilogue').addEventListener('close', () => {
   stopClip();
   renderRecap();
   if (document.activeElement === document.body && !$('recap').hidden) $('recap').focus({ preventScroll: true });
+});
+$('pier-open').addEventListener('click', openPier);
+$('pier-from-epilogue').addEventListener('click', openPier);
+$('pier-close').addEventListener('click', () => $('pier').close());
+$('pier').addEventListener('close', () => {
+  stopClip();
+  if (document.activeElement === document.body && !$('pier-open').hidden) $('pier-open').focus({ preventScroll: true });
 });
 $('rewind').addEventListener('click', reviewNight);
 $('receiver-panel').open = matchMedia('(min-width: 900px)').matches;
