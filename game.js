@@ -2009,7 +2009,7 @@ $('cancel-transfer').addEventListener('click', () => {
   $('import-save').focus();
 });
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('close', () => {
-  if (!document.querySelector('dialog[open]')) stopSceneAudio();
+  if (dialog.id !== 'prologue' && !document.querySelector('dialog[open]')) stopSceneAudio();
   syncAmbience();
 });
 
