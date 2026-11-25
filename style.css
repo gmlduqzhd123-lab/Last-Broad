@@ -224,6 +224,29 @@ noscript { display: block; margin: 20px; }
 .share-tools { display: flex; flex-wrap: wrap; gap: 6px; }
 .share-tools a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; background: #192324; }
+.readiness { margin-top: 9px; padding: 9px 10px; border: 1px solid #4d655c; border-radius: 7px; background: #1c2926; }
+.readiness h3 { margin-bottom: 5px; font-size: .95rem; color: var(--signal); }
+.readiness ul { display: grid; gap: 4px; margin-block: 4px; }
+.readiness li { display: flex; justify-content: space-between; align-items: baseline; gap: 7px; padding-bottom: 4px; border-bottom: 1px solid #40504b; color: var(--muted); font-size: .85rem; }
+.readiness li strong { text-align: end; color: #f5ce9f; }
+.readiness li[data-ready="true"] strong { color: var(--signal); }
+.reservation-comparison { margin-top: 5px; }
+.reservation-times { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 5px; }
+.reservation-times > div { padding: 5px 7px; border: 1px solid #4d655c; background: #162421; border-radius: 5px; }
+.reservation-times dt { color: var(--muted); font-size: .8rem; line-height: 1.3; }
+.reservation-times dd { margin: 2px 0 0; color: var(--signal); font-weight: 800; }
+.reservation-comparison[data-different="true"] .reservation-times > div:last-child { border-color: #b98355; }
+.reservation-comparison[data-different="true"] .reservation-times > div:last-child dd { color: var(--accent); }
+#journal-reservation-status { margin-top: 9px; }
+#journal { scroll-padding-top: 58px; }
+.turning-point { margin-block: 8px; padding: 7px 9px; background: #302a23; border-left: 3px solid var(--accent); border-radius: 5px; }
+.turning-point h4 { display: inline; margin: 0 7px 0 0; }
+.turning-point time { color: var(--accent); font: .83rem var(--mono); }
+.turning-point p { margin-top: 4px; }
+#action-history { margin-top: 8px; }
+#action-history summary { cursor: pointer; padding: 8px 5px; color: var(--signal); font-size: .91rem; }
+#action-record { padding: 4px 8px; background: #172220; border-radius: 6px; }
+#action-record [data-action="true"] span { color: var(--paper); font-weight: 700; }
 
 @media (max-width: 680px) {
   body.quick-active { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }

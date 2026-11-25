@@ -17,9 +17,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="data:,">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=4.1">
-  <script defer src="./locale.js?v=4"></script>
-  <script defer src="./game.js?v=4"></script>
+  <link rel="stylesheet" href="./style.css?v=5">
+  <script defer src="./locale.js?v=5"></script>
+  <script defer src="./game.js?v=5"></script>
 </head>
 <body>
   <header class="masthead">
@@ -70,6 +70,15 @@
               <p id="event" class="scene-event" hidden></p>
             </div>
             <div class="plan" id="plan" hidden></div>
+            <section class="readiness" id="roof-reservation" aria-labelledby="roof-reservation-title" hidden>
+              <h3 id="roof-reservation-title" data-text="옥상 송신기 예약">옥상 송신기 예약</h3>
+              <div id="roof-reservation-status"></div>
+            </section>
+            <section class="readiness" id="readiness" aria-labelledby="readiness-title" hidden>
+              <h3 id="readiness-title" data-text="동시 송출 준비 상태">동시 송출 준비 상태</h3>
+              <ul id="readiness-status"></ul>
+              <p id="readiness-next" class="note"></p>
+            </section>
             <section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
               <div class="panel-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
               <p id="sync-cue" class="sync-cue" hidden></p>
@@ -77,10 +86,17 @@
             </section>
             <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
               <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
+              <div class="turning-point" id="turning-point">
+                <h4 data-text="결정적 순간">결정적 순간</h4>
+                <time id="turning-time"></time>
+                <p id="missed"></p>
+              </div>
               <h4 data-text="직접 확인한 사건">직접 확인한 사건</h4>
               <ul id="observed"></ul>
-              <h4 data-text="놓친 기회">놓친 기회</h4>
-              <p id="missed"></p>
+              <details id="action-history">
+                <summary data-text="전체 행동과 사건 보기">전체 행동과 사건 보기</summary>
+                <ol id="action-record"></ol>
+              </details>
               <h4 data-text="다음에 확인할 질문">다음에 확인할 질문</h4>
               <p id="next-question"></p>
             </section>
@@ -131,6 +147,7 @@
         </fieldset>
         <p class="note" id="hypothesis-result" aria-live="polite"></p>
       </div>
+      <div id="journal-reservation-status"></div>
     </section>
     <ul id="clues" class="clues"></ul>
   </dialog>

@@ -84,8 +84,8 @@ const newRun = () => ({
 
 function loadGame() {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 4, loop: 1, known: ['echo'], unlocked: [], sound: false,
-    language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], run: newRun() };
+  const fresh = { version: 5, loop: 1, known: ['echo'], unlocked: [], sound: false,
+    language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
   try {
     const old = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!old || !Array.isArray(old.known) || !Array.isArray(old.unlocked)) return fresh;
@@ -95,6 +95,7 @@ function loadGame() {
     fresh.sound = Boolean(old.sound);
     if (!requested && old.language === 'en') fresh.language = 'en';
     if (Object.hasOwn(hypotheses, old.hypothesis)) fresh.hypothesis = old.hypothesis;
+    if (typeof old.nextQuestion === 'string') fresh.nextQuestion = old.nextQuestion;
     if (Array.isArray(old.matches)) fresh.matches = [...new Set(old.matches.filter((id) => ['bell', 'onAir'].includes(id)))];
     const previous = old.run;
     if (old.version >= 2 && previous && Object.hasOwn(rooms, previous.room)
@@ -130,6 +131,16 @@ const knows = (id) => game.known.includes(id);
 const learn = (id) => { if (!knows(id)) game.known.push(id); };
 const time = (elapsed) => elapsed === LIMIT ? '00:00' : '23:' + (52 + elapsed);
 const cartHere = (elapsed) => elapsed >= CART_ARRIVES && elapsed < CART_LEAVES;
+
+function reservationPlan() {
+  const r = game.run;
+  const proposed = game.matches.length ? hypotheses[game.hypothesis]?.local ?? 0 : 0;
+  const actual = r.tuneAt;
+  const pending = actual > r.elapsed;
+  const canApply = r.phase === 'play' && !r.review && !r.console
+    && (!actual || pending) && proposed > r.elapsed && proposed !== actual;
+  return { proposed, actual, pending, canApply };
+}
 
 function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch { /* In-memory play still works. */ }
@@ -248,18 +259,19 @@ function onMinute() {
   return cue;
 }
 
-function observe(text) {
-  game.run.log.push({ minute: game.run.elapsed, text });
+function observe(text, kind = 'event', args = []) {
+  game.run.log.push({ minute: game.run.elapsed, text, kind, args });
 }
 
-function step(message, speaker = '', observeAction = false) {
+function step(message, speaker = '', action = '', args = [], logResult = false) {
   const r = game.run;
   r.message = message;
   r.speaker = speaker;
   r.event = '';
   r.clip = '';
   r.elapsed += 1;
-  if (observeAction) observe(message);
+  if (action) observe(action, 'action', args);
+  if (logResult) observe(message);
   return onMinute();
 }
 
@@ -267,7 +279,7 @@ function enter(id) {
   const r = game.run;
   if (r.phase !== 'play' || r.room === id) return;
   r.room = id;
-  const cue = step(rooms[id].arrival);
+  const cue = step(rooms[id].arrival, '', '이동 · {0}', [id]);
   if (id === 'hall' && r.elapsed >= CART_LEAVES && !r.tape) learn('departure');
   update(cue);
 }
@@ -295,8 +307,10 @@ function reviewNight() {
 function rewind() {
   if (!game.run.elapsed) return;
   stopClip();
+  game.nextQuestion = reviewQuestion();
   game.loop += 1;
   game.run = newRun();
+  $('action-history').open = false;
   update('rewind');
 }
 
@@ -337,7 +351,7 @@ function consoleActions() {
   if (r.console === 'both' && !r.consoleReady) {
     actions.push({ title: '동시 송출 신호 보내기', detail: '원본 전달과 교신이 겹친 지금, 윤서에게 재생 큐를 보냅니다.', cost: '1행동', primary: true, run: () => {
       r.consoleReady = true;
-      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', true));
+      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', '동시 송출 신호 보내기'));
       focusConsoleControl();
     } });
   } else {
@@ -347,7 +361,7 @@ function consoleActions() {
       both: ['마이크 열고 함께 송출', '연결된 두 채널로 목소리와 인터뷰를 보냅니다.', '옥상의 마이크가 켜지고 방송실의 테이프가 동시에 돌아간다.'],
     }[r.console];
     actions.push({ title: control[0], detail: control[1], cost: '1행동', primary: true, run: () => {
-      step(control[2], '', true);
+      step(control[2], '', control[0]);
       finish(r.console);
     } });
   }
@@ -372,12 +386,13 @@ function choices() {
       if (clue) learn(clue);
       if (change) change();
       if (id !== 'wait') r.used.push(id);
-      update(step(message, speaker, Boolean(clue || speaker || id === 'enable-relay')));
+      update(step(message, speaker, title, [], Boolean(clue || speaker)));
     }, primary);
   };
   const finalChoice = (id, title, detail, primary) =>
     offer(id, title, detail, () => openConsole(id), primary, '콘솔 열기');
   const canJoin = r.dj && r.tape === 'delivered' && r.linked && r.elapsed === REPLY_WINDOW;
+  const directReply = r.syncMissed && r.linked && r.room !== 'roof' && r.elapsed < LIMIT - 1;
 
   if (r.room === 'studio') {
     if (r.elapsed <= 1) {
@@ -391,7 +406,7 @@ function choices() {
         () => { r.dj = true; });
     }
     if (r.tape) {
-      finalChoice('voices', '주민 인터뷰 방송하기', '테이프를 틀고 마을의 목소리로 방송을 닫습니다.', !canJoin);
+      finalChoice('voices', '주민 인터뷰 방송하기', '테이프를 틀고 마을의 목소리로 방송을 닫습니다.', !canJoin && !directReply);
     }
     if (canJoin) {
       finalChoice('both', '두 방송을 잇기', '옥상 채널과 주민 인터뷰를 함께 보냅니다. 2행동이 필요합니다.', true);
@@ -429,15 +444,21 @@ function choices() {
   if (r.room === 'roof') {
     scene('inspect-relay', '건너편 수신 기록 조사', '같은 주파수에서 잡힌 녹음과 시각을 확인합니다.', 'relay',
       '녹음에는 높은 종소리 뒤 낮은 종소리가 이어진다. 건너편 시각은 23:55. 녹음 끝에 다음 교신 시각이 남아 있다. 건너편 23:58.', '', !knows('relay'));
-    if (knows('relay') && !r.tuneAt) {
-      const hypothesis = game.matches.length ? hypotheses[game.hypothesis] : null;
-      if (!hypothesis) {
+    if (knows('relay')) {
+      const plan = reservationPlan();
+      if (!plan.proposed && !plan.actual) {
         offer('compare', '수첩에서 증거 연결하기', '두 시계에서 같은 사건을 찾고 시차 가설을 세웁니다.', openJournal, true, '시간 유지');
-      } else if (r.elapsed < hypothesis.local) {
-        scene('enable-relay', '보조 채널 예약하기', fmt('이쪽 시계 {0}에 연결을 시도합니다.', time(hypothesis.local)), null,
-          '채널을 예약했다. 송신기가 그 시각에 건너편 주파수를 찾는다.', '', true,
-          () => { r.tuneAt = hypothesis.local; });
-      } else {
+      } else if (plan.canApply) {
+        offer('reserve-relay', plan.pending ? '실제 예약 변경하기' : '보조 채널 예약하기',
+          plan.pending ? fmt('{0} 예약을 {1}로 바꿉니다.', time(plan.actual), time(plan.proposed))
+            : fmt('이쪽 시계 {0}에 연결을 시도합니다.', time(plan.proposed)),
+          () => {
+            r.tuneAt = plan.proposed;
+            update(step(plan.pending ? '송신기의 실제 예약을 바꿨다.' : '채널을 예약했다. 송신기가 그 시각에 건너편 주파수를 찾는다.',
+              '', plan.pending ? '교신 예약 변경 · {0} → {1}' : '교신 예약 확정 · {0}',
+              plan.pending ? [time(plan.actual), time(plan.proposed)] : [time(plan.proposed)]));
+          }, true);
+      } else if (plan.proposed && !plan.actual) {
         offer('review-clocks', '수첩에서 시각 다시 확인', '이번 밤의 예약 시각을 지났습니다.', openJournal, false, '시간 유지');
       }
     }
@@ -449,6 +470,9 @@ function choices() {
     }
   }
 
+  if (directReply) {
+    offer('go-reply', '옥상으로 이동해 응답', '이동 1행동 뒤 마이크를 여는 데 1행동이 필요합니다.', () => enter('roof'), true);
+  }
   if (r.elapsed === 0 && r.room === 'studio') return actions;
   scene('wait', '1분 기다리기', '이곳에서 다음 사건을 기다립니다.', null, '시계의 분침이 한 칸 움직인다.');
   return actions;
@@ -483,23 +507,23 @@ function objective() {
   if (r.phase === 'ending') return '오늘 밤의 방송이 끝났다';
   if (r.dj && r.courier && !r.syncMissed) return r.linked && r.tape === 'delivered'
     ? '지금 윤서에게 동시 송출 신호를 보낸다' : '옥상에서 두 시계를 비교해 교신을 예약한다';
+  if (r.linked && r.syncMissed) return '건너편 호출에 응답한다';
   if (r.tape && r.room !== 'roof') return '방송실에서 주민 인터뷰를 송출한다';
   if (r.linked) return '건너편 호출에 응답한다';
-  if (r.room === 'roof' && r.tuneAt > r.elapsed) return '예약한 시각까지 교신을 기다린다';
-  if (r.room === 'roof' && knows('relay') && !r.tuneAt) return '수첩에서 같은 사건의 기록을 연결한다';
+  if (r.room === 'roof' && knows('relay')) {
+    const plan = reservationPlan();
+    if (plan.pending) return plan.canApply ? '옥상 송신기의 실제 예약을 확인한다' : '예약한 시각까지 교신을 기다린다';
+    if (!plan.actual) return plan.proposed && plan.canApply
+      ? '옥상 송신기에 교신 시각을 예약한다' : '수첩에서 같은 사건의 기록을 연결한다';
+  }
   if (r.room === 'hall' && r.elapsed >= CART_LEAVES && !r.tape) return '다음 회차에 수레를 붙잡을 방법을 찾는다';
   return '자정 전에 주민 인터뷰 원본을 방송한다';
 }
 
 function nextPlan() {
   const r = game.run;
-  if (r.phase === 'ending') return endings[r.ending].follow;
-  if (r.phase === 'expired') {
-    if (r.courier && r.dj) return '두 시계로 교신 시각을 계산하고, 송출 콘솔에서 쓸 두 행동도 남겨 보세요.';
-    if (r.tape) return '다음엔 원본을 챙기는 즉시 방송실로 돌아가 보세요.';
-    return '다음엔 23:57 전에 복도에 도착하면 상자를 살필 수 있습니다.';
-  }
   if (r.elapsed === 0 && game.loop > 1) {
+    if (game.nextQuestion) return game.nextQuestion;
     if (knows('label') && knows('routing') && knows('relay')) return '이번에는 두 곳에서 같은 시간에 할 일을 누구에게 맡길지 정할 수 있습니다.';
     if (game.unlocked.includes('voices') && !knows('relay')) return '이번엔 옥상 송신실에서 건너편 수신 기록을 찾아보세요.';
     if (knows('label')) return '재호에게 파란 스티커를 미리 알려 주면, 당신이 다른 곳에 가도 원본이 움직입니다.';
@@ -594,37 +618,121 @@ function renderBroadcast() {
   }));
 }
 
+function renderReservation(id) {
+  const r = game.run;
+  const { proposed, actual, pending, canApply } = reservationPlan();
+  const panel = $(id);
+  const different = Boolean(proposed && actual && proposed !== actual);
+  panel.className = 'reservation-comparison';
+  panel.dataset.different = String(different);
+
+  const summary = element('dl', '', 'reservation-times');
+  for (const [label, value] of [
+    ['가설로 계산한 시각', proposed ? time(proposed) : '가설 미선택'],
+    ['송신기의 실제 예약', actual ? time(actual) : '미예약'],
+  ]) {
+    const cell = element('div');
+    cell.append(element('dt', label), element('dd', value));
+    summary.append(cell);
+  }
+  let status = '가설을 골라도 실제 예약은 그대로입니다.';
+  if (actual && !pending) status = r.linked ? '이 예약으로 교신에 연결했습니다.' : '이 예약으로는 교신에 연결하지 못했습니다.';
+  else if (pending && different) {
+    const earliest = r.elapsed + (r.room === 'roof' ? 1 : 2);
+    status = canApply && proposed >= earliest && (r.room === 'roof' || actual > r.elapsed + 1)
+      ? '두 시각이 다릅니다. 옥상 송신기에서 1행동으로 예약을 변경할 수 있습니다.'
+      : '두 시각이 다릅니다. 이번 회차에는 새 시각에 맞춰 변경할 수 없습니다.';
+  } else if (pending) status = '송신기가 실제 예약 시각에 연결을 시도합니다.';
+  panel.replaceChildren(summary, element('p', status, 'note'));
+}
+
+function renderReadiness() {
+  const r = game.run;
+  const active = r.phase === 'play' && !r.review;
+  const atConsole = r.room === 'studio' || r.room === 'roof';
+  const reservation = reservationPlan();
+  const reservationVisible = active && r.room === 'roof' && (knows('relay') || r.tuneAt) && !r.console
+    && (!r.linked || reservation.proposed !== reservation.actual);
+  $('roof-reservation').hidden = !reservationVisible;
+  if (reservationVisible) renderReservation('roof-reservation-status');
+
+  const show = active && atConsole && knows('routing') && (!r.console || r.console === 'both');
+  $('readiness').hidden = !show;
+  if (!show) return;
+
+  const tape = r.tape === 'delivered'
+    ? '원본 도착' : r.courier
+      ? '재호가 운반 예정' : r.elapsed >= CART_LEAVES
+        ? '재호의 수레가 떠남' : '재호에게 운반 부탁 필요';
+  const dj = r.dj ? '윤서가 준비 중' : '방송실에서 부탁 필요';
+  let link = '옥상에서 예약 필요';
+  if (r.linked) link = '교신 연결됨';
+  else if (r.tuneAt) link = r.tuneAt > r.elapsed ? '예약 시각 대기 중' : '예약 시각에 연결 실패';
+  const rows = [
+    ['원본 전달', tape, r.tape === 'delivered'],
+    ['윤서 준비', dj, r.dj],
+    ['교신 연결', link, r.linked],
+  ];
+  $('readiness-status').replaceChildren(...rows.map(([label, state, completed]) => {
+    const row = element('li');
+    row.dataset.ready = String(completed);
+    row.append(element('span', label), element('strong', state));
+    return row;
+  }));
+  let next = '';
+  if (r.consoleReady) next = '동시 송출 신호를 보냈습니다. 마이크를 열면 방송이 시작됩니다.';
+  else if (r.syncMissed) next = '동시 송출 기회는 지났지만, 옥상에서 건너편에 답할 수 있습니다.';
+  else if (r.dj && r.tape === 'delivered' && r.linked && r.elapsed === REPLY_WINDOW) next = '세 가지 준비가 끝났습니다. 지금 두 방송을 잇고 신호를 보내세요.';
+  $('readiness-next').hidden = !next;
+  $('readiness-next').textContent = t(next);
+}
+
+function turningPoint() {
+  const r = game.run;
+  if (r.ending === 'both') return [LIMIT, '원본과 건너편 목소리가 모두 방송되었습니다.'];
+  if (r.syncMissed) return [REPLY_WINDOW, '원본 전달과 교신이 겹친 순간에 윤서에게 신호를 보내지 못했습니다.'];
+  if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) return [r.tuneAt, '예약한 시각에 건너편 채널이 닫혀 있었습니다.'];
+  if (!r.tape && r.elapsed >= CART_LEAVES) return [CART_LEAVES, '23:57에 수레가 떠나 원본을 확보하지 못했습니다.'];
+  if (r.ending === 'voices') return [LIMIT, '주민 인터뷰는 전했지만 건너편 호출에는 응답하지 못했습니다.'];
+  if (r.ending === 'signal') return [LIMIT, '건너편에 닿았지만 이번 방송에는 주민 인터뷰가 빠졌습니다.'];
+  if (r.phase === 'expired') return [LIMIT, '자정까지 준비한 방송을 송출하지 못했습니다.'];
+  return [r.elapsed, '아직 남은 시간에 다른 선택을 해 볼 수 있습니다.'];
+}
+
+function reviewQuestion() {
+  const r = game.run;
+  if (r.syncMissed) return '원본 전달과 건너편 교신이 같은 시각에 오면 무엇을 먼저 해야 할까요?';
+  if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) return '종소리와 방송 오프닝에서 찾은 시차가 같은가요? 자료실 방송 일지에서 확인할 수 있습니다.';
+  if (r.courier && r.dj && r.phase === 'expired') return '두 곳의 준비를 마친 뒤 콘솔에 몇 행동을 남겨야 할까요?';
+  if (r.ending === 'signal') return '당신이 옥상에 있는 동안 누가 원본을 방송실로 옮길 수 있을까요?';
+  if (r.ending === 'both') return '다른 선택을 했다면 어떤 목소리가 방송에 남을까요?';
+  if (r.elapsed >= CART_LEAVES && !r.tape) return '수레가 나가기 전에 몇 시까지 복도에 도착해야 할까요?';
+  if (knows('relay')) return '같은 종소리가 두 시계에 몇 시로 기록되어 있나요?';
+  if (r.ending === 'voices') return '옥상에 남은 녹음은 건너편의 다음 교신을 언제로 기록했을까요?';
+  if (knows('departure')) return '수레가 나가기 전에 몇 시까지 복도에 도착해야 할까요?';
+  return '남은 시간에는 어떤 단서를 확인할 수 있을까요?';
+}
+
 function renderRecap() {
   const r = game.run;
   const show = r.review || r.phase !== 'play';
   $('recap').hidden = !show;
   if (!show) return;
-  const notes = r.log.slice(-4);
-  $('observed').replaceChildren(...(notes.length ? notes.map(({ minute, text }) => {
+  const [minute, reason] = turningPoint();
+  $('turning-time').textContent = time(minute);
+  $('missed').textContent = t(reason);
+  const row = ({ minute, text, kind, args = [] }) => {
     const line = element('li');
-    line.append(element('time', time(minute)), element('span', text));
+    const localizedArgs = args.map((item) => Object.hasOwn(rooms, item) ? t(rooms[item].name) : item);
+    line.append(element('time', time(minute)), element('span', fmt(text, ...localizedArgs)));
+    if (kind === 'action') line.dataset.action = 'true';
     return line;
-  }) : [element('li', '아직 기록된 사건이 없습니다.')]));
-
-  let missed = '아직 남은 시간에 다른 선택을 해 볼 수 있습니다.';
-  if (r.ending === 'voices') missed = '주민 인터뷰는 전했지만 건너편 호출에는 응답하지 못했습니다.';
-  else if (r.ending === 'signal') missed = '건너편에 닿았지만 이번 방송에는 주민 인터뷰가 빠졌습니다.';
-  else if (r.ending === 'both') missed = '원본과 건너편 목소리가 모두 방송되었습니다.';
-  else if (r.syncMissed) missed = '원본 전달과 교신이 겹친 순간에 윤서에게 신호를 보내지 못했습니다.';
-  else if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) missed = '예약한 시각에 건너편 채널이 닫혀 있었습니다.';
-  else if (!r.tape && r.elapsed >= CART_LEAVES) missed = '23:57에 수레가 떠나 원본을 확보하지 못했습니다.';
-  else if (r.phase === 'expired') missed = '자정까지 준비한 방송을 송출하지 못했습니다.';
-  $('missed').textContent = t(missed);
-  let next = '남은 시간에는 어떤 단서를 확인할 수 있을까요?';
-  if (r.syncMissed) next = '원본 전달과 건너편 교신이 같은 시각에 오면 무엇을 먼저 해야 할까요?';
-  else if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) next = '종소리와 방송 오프닝에서 찾은 시차가 같은가요? 자료실 방송 일지에서 확인할 수 있습니다.';
-  else if (r.courier && r.dj && r.phase === 'expired') next = '두 곳의 준비를 마친 뒤 콘솔에 몇 행동을 남겨야 할까요?';
-  else if (r.ending === 'signal') next = '당신이 옥상에 있는 동안 누가 원본을 방송실로 옮길 수 있을까요?';
-  else if (r.ending === 'both') next = '다른 선택을 했다면 어떤 목소리가 방송에 남을까요?';
-  else if (knows('relay')) next = '같은 종소리가 두 시계에 몇 시로 기록되어 있나요?';
-  else if (r.ending === 'voices') next = '옥상에 남은 녹음은 건너편의 다음 교신을 언제로 기록했을까요?';
-  else if (r.elapsed >= CART_LEAVES && !r.tape) next = '수레가 나가기 전에 몇 시까지 복도에 도착해야 할까요?';
-  $('next-question').textContent = t(next);
+  };
+  const notes = r.log.filter((entry) => entry.kind !== 'action').slice(-4);
+  $('observed').replaceChildren(...(notes.length ? notes.map(row) : [element('li', '아직 기록된 사건이 없습니다.')]));
+  $('action-history').hidden = !r.log.length;
+  $('action-record').replaceChildren(...r.log.map(row));
+  $('next-question').textContent = t(reviewQuestion());
 }
 
 function renderTimeline() {
@@ -663,6 +771,7 @@ function render() {
   document.body.classList.toggle('quick-active', r.elapsed > 0);
   renderScene();
   renderTimeline();
+  renderReadiness();
   renderBroadcast();
   renderRecap();
 
@@ -741,7 +850,7 @@ function renderDeduction() {
         selectedEvidence[side] = selectedEvidence[side] === id ? '' : id;
         pairFeedback = '';
         renderDeduction();
-        $('clock-evidence').querySelector('[data-evidence="' + id + '"]').focus();
+        $('clock-evidence').querySelector('[data-evidence="' + id + '"]').focus({ preventScroll: true });
       });
       column.append(card);
     }
@@ -752,6 +861,7 @@ function renderDeduction() {
     ? '두 사건 모두 같은 시차를 보여 줍니다.'
     : game.matches.length ? '연결한 기록의 시각으로 가설을 세우세요. 다른 사건으로도 확인할 수 있습니다.' : ''));
   $('hypothesis-stage').hidden = !game.matches.length;
+  renderReservation('journal-reservation-status');
   if (!game.matches.length) return;
 
   $('hypotheses').replaceChildren(...Object.entries(hypotheses).map(([id, hypothesis]) => {
@@ -789,7 +899,13 @@ function pairEvidence() {
   save();
   render();
   renderDeduction();
-  $('hypotheses').querySelector('[aria-pressed="true"], button').focus();
+  const unpaired = Object.entries(evidence).find(([, item]) => item.side === 'local' && knows(item.clue)
+    && !game.matches.includes(item.event)
+    && Object.values(evidence).some((other) => other.side === 'remote' && other.event === item.event && knows(other.clue)));
+  const next = unpaired ? $('clock-evidence').querySelector('[data-evidence="' + unpaired[0] + '"]')
+    : $('hypotheses').querySelector('[aria-pressed="true"]') || $('hypotheses').querySelector('button');
+  next.scrollIntoView({ block: 'nearest' });
+  next.focus({ preventScroll: true });
 }
 
 function openJournal() {
