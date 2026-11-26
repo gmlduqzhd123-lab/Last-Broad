@@ -1,452 +1,154 @@
 <!doctype html>
-<html lang="ko" data-qr-url="https://gmlduqzhd123-lab.github.io/Last-Broad/" data-qr-name="마지막 방송까지 8분">
+<html lang="ko" data-qr-name="한려 FM, 정답이 먼저 나갔다" data-qr-url="https://eight-minutes-to-air.asdad123asd.chatgpt.site/">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101618">
-  <meta name="application-name" content="마지막 방송까지 8분">
-  <meta name="description" content="자정까지 여덟 번의 행동. 같은 밤을 되감아 한려 FM의 마지막 방송을 바꾸는 시간 루프 추리 게임.">
+  <meta name="theme-color" content="#111a21">
+  <meta name="description" content="여수한려초 방송실. 마이크를 껐는데 정답이 먼저 나갔다. 8분을 되감아 퀴즈 결승을 바꾸는 추리 게임.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="마지막 방송까지 8분">
-  <meta property="og:description" content="같은 목소리가 두 곳에서 들린다. 자정까지 여덟 번의 행동으로 마지막 방송을 바꿔라.">
-  <meta property="og:image" content="https://gmlduqzhd123-lab.github.io/Last-Broad/og-image.jpg">
-  <meta property="og:image:alt" content="한려 FM의 밤. 비 내리는 항구를 바라보는 방송실.">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:url" content="https://gmlduqzhd123-lab.github.io/Last-Broad/">
+  <meta property="og:title" content="한려 FM, 정답이 먼저 나갔다">
+  <meta property="og:description" content="마이크를 껐는데 정답이 먼저 나갔다. 여수한려초 방송실에서 8분을 되감아 결승을 바꿔라.">
+  <meta property="og:url" content="https://eight-minutes-to-air.asdad123asd.chatgpt.site/">
+  <meta property="og:image" content="https://eight-minutes-to-air.asdad123asd.chatgpt.site/media/school-studio.webp">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="마지막 방송까지 8분">
-  <meta name="twitter:description" content="같은 목소리가 두 곳에서 들린다. 자정까지 여덟 번의 행동으로 마지막 방송을 바꿔라.">
-  <meta name="twitter:image" content="https://gmlduqzhd123-lab.github.io/Last-Broad/og-image.jpg">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-title" content="마지막 방송">
+  <link rel="stylesheet" href="./school.css?v=1">
+  <script defer src="./school-copy.js?v=1"></script>
+  <script defer src="./school.js?v=1"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
-  <title>마지막 방송까지 8분</title>
-  <link rel="icon" href="./icons/icon-192.png">
-  <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=21">
-  <script defer src="./locale.js?v=21"></script>
-  <script defer src="./game.js?v=21"></script>
+  <title>한려 FM, 정답이 먼저 나갔다</title>
 </head>
 <body>
-  <header class="masthead">
-    <div class="shell masthead-inner">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">▂▅▇▅▂</span>
-        <span><strong data-text="한려 FM">한려 FM</strong><small>89.7 MHz</small></span>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <div><strong data-t="brand">한려 FM</strong><span data-t="school">여수한려초등학교</span></div>
       </div>
-      <h1><span data-text="마지막 방송까지">마지막 방송까지</span> <em data-text="8분">8분</em></h1>
-      <div class="utilities">
-        <button class="utility" id="sound" type="button" aria-pressed="false" data-label="게임 소리">소리 끔</button>
-        <button class="utility" id="journal-open" type="button" aria-haspopup="dialog"><span data-text="수첩">수첩</span> <span id="journal-count">0</span></button>
-        <details class="utility-menu" id="utility-menu">
-          <summary class="utility" data-text="메뉴">메뉴</summary>
-          <div class="utility-panel">
-            <button class="utility" type="button" data-ys-install data-text="앱 설치">앱 설치</button>
-            <button class="utility" type="button" data-qr data-text="QR 코드로 접속">QR 코드로 접속</button>
-            <button class="utility" id="language" type="button" aria-label="Switch to English" lang="en">English</button>
+      <div class="tools">
+        <button class="utility" id="sound" type="button" aria-pressed="false"></button>
+        <button class="utility journal-button" id="journal-open" type="button" aria-haspopup="dialog"><span data-t="journal">수첩</span><span id="journal-count" class="count"></span></button>
+        <details class="menu" id="menu">
+          <summary class="utility" data-t="menu">메뉴</summary>
+          <div class="menu-items">
+            <button class="utility" id="language" type="button"></button>
+            <button class="utility" id="replay-intro" type="button" data-t="replayIntro">오프닝 다시 보기</button>
+            <button class="utility" type="button" data-ys-install data-t="install">앱 설치</button>
+            <button class="utility" type="button" data-qr data-t="share">QR 코드로 공유</button>
           </div>
         </details>
       </div>
     </div>
   </header>
 
-  <main class="shell game">
-    <section class="hud" aria-label="현재 목표와 남은 시간" data-label="현재 목표와 남은 시간">
+  <main class="shell" id="game">
+    <section class="hud" aria-labelledby="mission">
       <div class="mission">
-        <span class="label" data-text="현재 목표">현재 목표</span>
-        <strong id="objective">자정 전에 주민 인터뷰 원본을 방송한다</strong>
+        <div class="hud-meta"><span id="loop"></span><span id="memory" hidden></span></div>
+        <h2 id="mission" tabindex="-1"></h2>
       </div>
-      <div class="time">
-        <span id="clock">23:52</span>
-        <span id="budget">남은 행동 8회</span>
-        <div class="beats" id="beats" aria-hidden="true"></div>
+      <div class="clock-face">
+        <time id="clock" aria-label="방송 시각">12:32</time>
+        <span id="budget"></span>
       </div>
-      <p class="rewind-memory" id="rewind-memory" role="status" hidden></p>
-      <div class="rewind-cut" id="rewind-cut" aria-hidden="true" hidden>
-        <span class="on-air">ON AIR</span>
-        <span class="rewind-time">↶ <span id="rewind-clock"></span></span>
-      </div>
+      <div class="track" id="track" aria-hidden="true"></div>
     </section>
 
-    <div class="layout">
-      <div class="play">
-        <section class="scene panel" aria-labelledby="room-name">
-          <div class="opening-guidance" id="opening-guidance" hidden>
-            <p id="plan"></p>
-            <div id="opening-action"></div>
-          </div>
-          <div class="picture">
-            <img id="scene-image" src="./studio.webp" alt="" fetchpriority="high" width="1672" height="941">
-            <div class="scene-head">
-              <div>
-                <p class="label" id="room-floor">2층</p>
-                <h2 id="room-name">방송실</h2>
-              </div>
-              <span class="scene-state" id="room-state">방송 준비 중</span>
-            </div>
-            <div class="entry-controls" id="entry-controls" hidden>
-              <div class="entry-brief">
-                <strong data-text="마지막 야간 근무 · 방송 보조">마지막 야간 근무 · 방송 보조</strong>
-                <p data-text="자정 전에 순임의 원본을 찾아, 아버지가 기다리던 부두에 그 목소리를 전하세요.">자정 전에 순임의 원본을 찾아, 아버지가 기다리던 부두에 그 목소리를 전하세요.</p>
-                <p id="rewind-rule" data-text="사람과 물건은 돌아왔다. 알아낸 것은 기억에 남았다." hidden>사람과 물건은 돌아왔다. 알아낸 것은 기억에 남았다.</p>
-              </div>
-              <section class="receiver" id="receiver" aria-labelledby="receiver-title">
-                <div class="panel-heading">
-                  <h3 id="receiver-title" data-text="신호 맞추기">신호 맞추기</h3>
-                  <span class="entry-cost" data-text="시간 유지">시간 유지</span>
-                </div>
-                <div class="receiver-controls">
-                  <input id="receiver-dial" type="range" min="0" max="2" step="1" value="0" aria-label="수신 주파수" data-label="수신 주파수" aria-describedby="receiver-caption receiver-audio-status">
-                  <span class="sr-only" id="receiver-audio-status"></span>
-                  <div class="receiver-bands" aria-hidden="true">
-                    <span data-text="한려 FM">한려 FM</span><span data-text="직원 무전">직원 무전</span><span data-text="미확인 신호">미확인 신호</span>
-                  </div>
-                  <div class="receiver-screen" role="status">
-                    <span class="signal-bars" id="receiver-wave" aria-hidden="true"></span>
-                    <div class="receiver-message">
-                      <div class="opening-exchange" id="opening-dialogue" hidden>
-                        <strong data-text="이쪽 윤서 · 방송실">이쪽 윤서 · 방송실</strong>
-                        <p id="receiver-local"></p>
-                      </div>
-                      <strong id="receiver-lock"></strong>
-                      <p id="receiver-caption"></p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <button class="action primary" id="entry-hall" type="button">
-                <span class="action-head"><strong data-text="복도로 이동">복도로 이동</strong><span class="cost" data-text="1행동">1행동</span></span>
-                <span class="action-detail" data-text="수레에서 인터뷰 원본을 찾습니다.">수레에서 인터뷰 원본을 찾습니다.</span>
-              </button>
-            </div>
-          </div>
-          <div class="scene-body">
-            <p class="late-contact" id="late-contact" role="status" hidden data-text="이쪽 폐국 안내 시작 · 보조 회선은 자정까지 연결">이쪽 폐국 안내 시작 · 보조 회선은 자정까지 연결</p>
-            <p class="route-deadline" id="route-deadline" hidden></p>
-            <div id="featured-action" class="featured-action" hidden></div>
-            <div id="route-alternative" class="featured-action" hidden></div>
-            <div id="late-contact-actions" class="late-contact-actions" hidden></div>
-            <div id="lead-radio"><section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
-              <div class="panel-heading">
-                <h3 id="radio-exchange-title" data-text="23:57 · 두 무전">23:57 · 두 무전</h3>
-                <button class="utility" id="exchange-replay" type="button" data-text="두 무전 다시 듣기">두 무전 다시 듣기</button>
-              </div>
-              <p class="exchange-status" id="exchange-status"></p>
-              <p class="exchange-live" id="exchange-live" role="status"></p>
-            </section>
-            <section class="radio-exchange solo-call" id="solo-call" aria-labelledby="solo-call-title" hidden>
-              <div class="panel-heading">
-                <h3 id="solo-call-title" data-text="23:57 · 건너편 윤서">23:57 · 건너편 윤서</h3>
-                <button class="utility" type="button" id="solo-replay" data-text="호출 다시 듣기">호출 다시 듣기</button>
-              </div>
-              <p class="exchange-live" data-channel="relay" id="solo-caption"></p>
-            </section>
-            <details class="exchange-transcript" id="exchange-transcript" hidden>
-                <summary data-text="전체 무전 자막">전체 무전 자막</summary>
-                <ol id="exchange-lines"></ol>
-            </details></div>
-            <div id="live-console"></div>
-            <section class="recap" id="recap" aria-labelledby="recap-title" tabindex="-1" hidden>
-              <h3 id="recap-title" data-text="이번 밤의 기록">이번 밤의 기록</h3>
-              <ul id="recap-outcomes" class="recap-outcomes" aria-label="방송 결과" data-label="방송 결과" hidden></ul>
-              <p class="recap-question" id="next-question"></p>
-              <div id="recap-actions"></div>
-              <div class="recap-followups" id="recap-followups" hidden>
-                <button class="utility epilogue-link" id="recap-mystery" type="button" data-text="윤서가 원본을 찾은 이유" hidden>윤서가 원본을 찾은 이유</button>
-                <button class="utility epilogue-link" id="recap-epilogue" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
-                <button class="utility epilogue-link" id="recap-pier" type="button" aria-haspopup="dialog" hidden></button>
-              </div>
-              <details id="recap-details">
-                <summary data-text="이번 회차의 사건 기록">이번 회차의 사건 기록</summary>
-                <p class="recap-times" id="recap-times" hidden></p>
-                <div class="turning-point" id="turning-point">
-                  <h4 data-text="결정적 순간">결정적 순간</h4>
-                  <time id="turning-time"></time>
-                  <p id="missed"></p>
-                </div>
-                <h4 data-text="직접 확인한 사건">직접 확인한 사건</h4>
-                <ul id="observed"></ul>
-                <details id="action-history">
-                  <summary data-text="전체 행동과 사건 보기">전체 행동과 사건 보기</summary>
-                  <ol id="action-record"></ol>
-                </details>
-              </details>
-            </section>
-            <div class="narration" id="narration" tabindex="-1" aria-live="polite" aria-atomic="true">
-              <p class="context" id="context"></p>
-              <div id="story"></div>
-              <p id="event" class="scene-event" hidden></p>
-            </div>
-            <section class="transmission" id="transmission" aria-labelledby="transmission-title" hidden>
-              <div class="transmission-stage">
-                <img id="transmission-image" src="./studio.webp" alt="" width="1000" height="563">
-                <div class="transmission-display">
-                  <div class="panel-heading"><h3 id="transmission-title" tabindex="-1"></h3><span class="on-air">ON AIR</span></div>
-                  <div class="transmission-channel">
-                    <span class="reel" aria-hidden="true"></span><span id="tape-wave" class="signal-bars" aria-hidden="true"></span>
-                    <span id="remote-wave" class="signal-bars" aria-hidden="true"></span>
-                  </div>
-                </div>
-              </div>
-              <p id="transmission-caption" role="status"></p>
-              <p id="transmission-clocks" hidden></p>
-              <button class="utility" id="transmission-skip" type="button" data-text="결말 보기">결말 보기</button>
-            </section>
-            <section class="readiness" id="roof-reservation" aria-labelledby="roof-reservation-title" hidden>
-              <h3 id="roof-reservation-title" data-text="옥상 송신기 예약">옥상 송신기 예약</h3>
-              <div id="roof-reservation-status"></div>
-            </section>
-            <section class="readiness" id="readiness" aria-labelledby="readiness-title" hidden>
-              <h3 id="readiness-title" data-text="동시 송출 준비 상태">동시 송출 준비 상태</h3>
-              <ul id="readiness-status"></ul>
-              <p id="readiness-next" class="note"></p>
-            </section>
-            <div id="broadcast-slot"><section class="broadcast" id="broadcast" aria-labelledby="broadcast-title" hidden>
-              <div class="panel-heading broadcast-heading"><h3 id="broadcast-title" data-text="송출 콘솔">송출 콘솔</h3><span id="broadcast-state"></span></div>
-              <div id="console-radio"></div>
-              <p id="sync-cue" class="sync-cue" hidden></p>
-              <section id="routing-panel" class="routing-panel" aria-labelledby="routing-title" hidden>
-                <div class="routing-heading">
-                  <h4 id="routing-title" tabindex="-1" data-text="송출선 연결">송출선 연결</h4>
-                  <span id="routing-progress" role="status"></span>
-                </div>
-                <div class="routing-switches">
-                  <fieldset data-source="tape">
-                    <legend data-text="순임의 테이프">순임의 테이프</legend>
-                    <div class="route-options">
-                      <label><input type="radio" name="tape-destination" value="main"><span data-text="한려 FM">한려 FM</span></label>
-                      <label><input type="radio" name="tape-destination" value="aux"><span data-text="보조 채널">보조 채널</span></label>
-                    </div>
-                  </fieldset>
-                  <fieldset data-source="relay">
-                    <legend data-text="건너편 교신">건너편 교신</legend>
-                    <div class="route-options">
-                      <label><input type="radio" name="relay-destination" value="main"><span data-text="한려 FM">한려 FM</span></label>
-                      <label><input type="radio" name="relay-destination" value="aux"><span data-text="보조 채널">보조 채널</span></label>
-                    </div>
-                  </fieldset>
-                </div>
-              </section>
-              <div id="console-action"></div>
-              <details class="wiring-note" id="wiring-note" hidden>
-                <summary data-text="발견한 연결표 보기">발견한 연결표 보기</summary>
-                <dl id="wiring-note-lines"></dl>
-              </details>
-              <p class="note" id="routing-status" role="status" hidden></p>
-              <div id="console-transcript"></div>
-              <ul id="broadcast-channels"></ul>
-            </section></div>
-            <div id="actions" class="actions" aria-label="장면에서 할 수 있는 행동" data-label="장면에서 할 수 있는 행동"></div>
-            <section class="play-hints" id="play-hints" aria-labelledby="hint-toggle" hidden>
-              <button class="utility" id="hint-toggle" type="button" aria-controls="hint-steps" aria-expanded="false" data-text="힌트">힌트</button>
-              <div id="hint-steps" hidden>
-                <ol id="hint-list" aria-live="polite"></ol>
-                <button class="utility" id="hint-more" type="button"></button>
-              </div>
-            </section>
-            <div class="scene-tools" id="scene-tools">
-              <div id="replay" class="replay"></div>
-              <button class="utility" id="receiver-replay" type="button" data-text="미확인 신호 다시 듣기" hidden>미확인 신호 다시 듣기</button>
-              <button class="utility" id="settings-open" type="button" aria-haspopup="dialog" data-text="설정 · 저장">설정 · 저장</button>
-            </div>
-          </div>
-        </section>
-        <nav class="locations panel" id="locations" aria-labelledby="map-title" hidden>
-          <div class="panel-heading"><h2 id="map-title" data-text="방송국 지도">방송국 지도</h2><span data-text="이동 · 1행동">이동 · 1행동</span></div>
-          <div id="places" class="places"></div>
-        </nav>
-      </div>
+    <div class="play-grid">
+      <section class="scene" id="scene" aria-labelledby="game-title">
+        <div class="scene-inner">
+          <p id="place"></p>
+          <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
+          <p id="scene-line" role="status"></p>
+        </div>
+      </section>
 
-      <aside class="side" aria-label="진행 기록" data-label="진행 기록">
-        <section class="panel side-panel">
-          <div class="panel-heading"><h2 data-text="이번 밤">이번 밤</h2><span class="cycle" id="cycle">1회차</span></div>
-          <ol id="timeline" class="timeline"></ol>
-          <section class="timeline-comparison" id="timeline-comparison" aria-labelledby="comparison-title" hidden>
-            <h3 id="comparison-title" data-text="지난 밤과 이번 밤">지난 밤과 이번 밤</h3>
-            <h4 id="timeline-past-title"></h4>
-            <ol class="timeline" id="timeline-past"></ol>
-            <h4 id="timeline-current-title"></h4>
-            <ol class="timeline" id="timeline-current"></ol>
-          </section>
-          <p class="note" data-text="이동하거나 조사할 때 1분이 흐릅니다.">이동하거나 조사할 때 1분이 흐릅니다.</p>
-        </section>
-        <section class="panel side-panel">
-          <div class="panel-heading"><h2 data-text="결말 기록">결말 기록</h2><span id="ending-count">0 / 3</span></div>
-          <ul id="ending-list" class="endings"></ul>
-          <button class="utility epilogue-link" id="epilogue-open" type="button" aria-haspopup="dialog" data-text="첫 교신의 원본 듣기" hidden>첫 교신의 원본 듣기</button>
-          <button class="utility epilogue-link" id="pier-open" type="button" aria-haspopup="dialog" data-text="선착장 외전" hidden>선착장 외전</button>
-        </section>
-        <button class="utility rewind" id="rewind" type="button" data-text="되감기 검토" hidden>되감기 검토</button>
-        <button class="utility share-open" id="share-open" type="button" data-text="소개 영상 · 공유" aria-haspopup="dialog">소개 영상 · 공유</button>
-      </aside>
+      <section class="console" id="console" aria-labelledby="console-title">
+        <div class="console-head">
+          <div><h2 id="console-title" data-t="console">방송 콘솔</h2><p id="console-status"></p></div>
+          <span id="air-label" class="air-label"><i aria-hidden="true"></i><span>ON AIR</span></span>
+        </div>
+        <div class="channels" id="channels">
+          <div class="channel" id="mic-channel"><span data-t="mic">마이크</span><strong id="mic-status"></strong></div>
+          <div class="channel" id="file-channel"><span data-t="file">전교 스피커</span><strong id="file-status"></strong></div>
+          <div class="channel" id="headphone-channel"><span data-t="headphones">미리듣기</span><strong id="headphone-status"></strong></div>
+        </div>
+        <p class="cue" id="cue"></p>
+        <button class="listen" id="monitor" type="button">
+          <span class="play-symbol" aria-hidden="true">▶</span>
+          <span id="monitor-label"></span>
+          <small data-t="noCost">시간 유지</small>
+        </button>
+        <p class="monitor-caption" id="monitor-caption" role="status" hidden></p>
+      </section>
+
+      <section class="choices" id="choices" aria-label="행동">
+        <div class="action-heading"><h2 data-t="actions">지금 할 일</h2><button class="utility small" id="review" type="button" data-t="review" hidden>회차 기록</button></div>
+        <div class="actions" id="actions"></div>
+      </section>
+
+      <section class="ending" id="ending" hidden aria-labelledby="ending-title">
+        <div class="ending-meta"><span id="ending-category"></span><span id="ending-count"></span></div>
+        <h2 id="ending-title" tabindex="-1"></h2>
+        <p id="ending-caption" role="status"></p>
+        <p id="ending-story"></p>
+        <p class="ending-next" id="ending-next"></p>
+        <div class="end-actions">
+          <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
+          <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
+        </div>
+      </section>
+
+      <details class="history" id="history" hidden>
+        <summary data-t="history">이번 회차 기록</summary>
+        <ol id="history-list"></ol>
+      </details>
     </div>
-    <p class="ys-credit">© 2026 엽쌤. All rights reserved. · <a href="https://gmlduqzhd123-lab.github.io/YScode/">엽쌤의 다른 앱 보기 →</a></p>
+    <noscript><p>게임을 플레이하려면 브라우저의 JavaScript를 켜 주세요.</p></noscript>
   </main>
 
-  <nav class="quick" id="quick" aria-label="빠른 조작" data-label="빠른 조작" hidden>
-    <button type="button" class="utility" id="quick-places" data-text="장소" aria-haspopup="dialog">장소</button>
-    <button type="button" class="utility" id="quick-journal" data-text="수첩" aria-haspopup="dialog">수첩</button>
-    <button type="button" class="utility" id="quick-review"></button>
-  </nav>
-
-  <dialog id="places-dialog" aria-labelledby="places-dialog-title">
-    <div class="panel-heading">
-      <h2 id="places-dialog-title" data-text="방송국 지도">방송국 지도</h2>
-      <button type="button" class="utility" id="places-close" autofocus data-text="닫기">닫기</button>
+  <dialog id="intro" aria-labelledby="intro-title" class="intro">
+    <div class="intro-view" id="intro-view">
+      <div class="intro-copy">
+        <span id="intro-clock"></span>
+        <h2 id="intro-title" data-t="title">정답이 먼저 나갔다</h2>
+        <p id="intro-caption" role="status"></p>
+      </div>
     </div>
-    <div class="places" id="sheet-places"></div>
+    <progress id="intro-progress" max="20000" value="0" aria-label="오프닝 진행"></progress>
+    <div class="dialog-actions">
+      <button class="utility" id="intro-sound" type="button" aria-pressed="false"></button>
+      <button class="primary" id="intro-start" type="button" data-t="start">바로 시작</button>
+    </div>
   </dialog>
 
   <dialog id="journal" aria-labelledby="journal-title">
-    <div class="journal-header">
-      <div class="panel-heading"><h2 id="journal-title" data-text="단서 수첩">단서 수첩</h2><button type="button" class="utility" id="journal-close" data-text="닫기">닫기</button></div>
-      <div class="journal-tabs" id="journal-tabs" role="tablist" data-label="수첩 분류" aria-label="수첩 분류">
-        <button type="button" class="utility" id="tab-clock" role="tab" aria-controls="journal-clock" aria-selected="false" tabindex="-1" data-tab="clock" data-text="시계">시계</button>
-        <button type="button" class="utility" id="tab-story" role="tab" aria-controls="journal-story" aria-selected="true" data-tab="story" data-text="이야기">이야기</button>
-        <button type="button" class="utility" id="tab-audio" role="tab" aria-controls="journal-audio" aria-selected="false" tabindex="-1" data-tab="audio" data-text="녹음">녹음</button>
-      </div>
-    </div>
-    <p class="note journal-note" data-text="수첩을 보는 동안 시간은 멈춥니다.">수첩을 보는 동안 시간은 멈춥니다.</p>
-    <div id="journal-clock" role="tabpanel" aria-labelledby="tab-clock" hidden>
-      <p class="note" id="clock-empty" data-text="아직 발견한 시계 기록이 없습니다.">아직 발견한 시계 기록이 없습니다.</p>
-    <section class="deduction" id="deduction" aria-labelledby="deduction-title" hidden>
-      <h3 id="deduction-title" tabindex="-1" data-text="두 밤의 시계">두 밤의 시계</h3>
-      <div class="clock-recovery" id="clock-recovery" tabindex="-1" hidden>
-        <p id="failed-time"></p>
-        <ul id="paired-clocks"></ul>
-      </div>
-      <div id="retry-hypothesis"></div>
-      <button type="button" class="utility" id="clock-resume" hidden data-text="동시 송출 준비 계속 · 시간 유지">동시 송출 준비 계속 · 시간 유지</button>
-      <button type="button" class="utility" id="journal-airlog" data-text="자료실로 이동해 방송 일지 확인 · 1행동" hidden>자료실로 이동해 방송 일지 확인 · 1행동</button>
-      <p class="note evidence-instruction" data-text="두 기록에서 같은 사건을 하나씩 골라 연결하세요.">두 기록에서 같은 사건을 하나씩 골라 연결하세요.</p>
-      <div id="clock-evidence" class="clock-evidence"></div>
-      <button type="button" class="utility" id="pair-evidence" data-text="선택한 두 기록 연결">선택한 두 기록 연결</button>
-      <p class="note" id="pair-result" aria-live="polite"></p>
-      <div id="normal-hypothesis"><div id="hypothesis-stage" hidden>
-        <fieldset>
-          <legend data-text="두 시계는 어떤 관계일까요?">두 시계는 어떤 관계일까요?</legend>
-          <div id="hypotheses" class="hypotheses"></div>
-        </fieldset>
-        <p class="note" id="hypothesis-result" aria-live="polite"></p>
-      </div></div>
-      <div id="journal-reservation-status"></div>
-      <button type="button" class="utility" id="journal-reserve" hidden></button>
-    </section>
-    </div>
-    <div id="journal-story" role="tabpanel" aria-labelledby="tab-story">
-    <section class="deduction" id="broadcast-mystery" aria-labelledby="mystery-title" hidden>
-      <h3 id="mystery-title" tabindex="-1" data-text="두 밤의 마지막 편성">두 밤의 마지막 편성</h3>
-      <ul id="mystery-evidence" class="mystery-evidence"></ul>
-      <p id="mystery-prompt" class="note"></p>
-      <div id="mystery-answers" class="mystery-answers"></div>
-      <p id="mystery-feedback" role="status" tabindex="-1"></p>
-    </section>
-    <ul id="clues" class="clues"></ul>
-    </div>
-    <div id="journal-audio" role="tabpanel" aria-labelledby="tab-audio" hidden>
-      <ul id="journal-recordings" class="clues"></ul>
+    <div class="dialog-heading"><div><h2 id="journal-title" data-t="journalTitle">방송 수첩</h2><p data-t="journalPause">수첩을 보는 동안 방송 시계가 멈춥니다.</p></div><button class="utility" id="journal-close" type="button" data-t="close">닫기</button></div>
+    <div class="dialog-body">
+      <ol id="journal-clues" class="clues"></ol>
+      <section id="compare-area" class="compare" aria-labelledby="compare-title">
+        <h3 id="compare-title" data-t="compareTitle">녹음 두 개를 대조하기</h3>
+        <p data-t="comparePrompt">마지막 소리가 같은 녹음 두 개를 고르세요.</p>
+        <div class="compare-options" id="compare-options"></div>
+        <button type="button" class="utility" id="compare" data-t="compare">두 녹음 대조</button>
+        <p id="compare-feedback" role="status"></p>
+        <div class="source-choice" id="source-choice" hidden>
+          <p data-t="sourcePrompt">12:36에 어느 쪽에서 정답이 나왔나요?</p>
+          <button class="utility" type="button" data-source="mic" data-t="mic" aria-pressed="false">마이크</button>
+          <button class="utility" type="button" data-source="file" data-t="queuedSource" aria-pressed="false">예약 음원</button>
+          <button type="button" class="primary" id="connect" data-t="connect">12:36 재생표와 연결</button>
+        </div>
+      </section>
     </div>
   </dialog>
 
-  <dialog id="record" aria-labelledby="record-title">
-    <div class="panel-heading"><h2 id="record-title"></h2><button type="button" class="utility" id="record-close" data-text="닫기">닫기</button></div>
-    <p id="record-story"></p>
+  <dialog id="review-dialog" aria-labelledby="review-title">
+    <div class="dialog-heading"><div><h2 id="review-title" data-t="review">회차 기록</h2><p id="review-note"></p></div><button class="utility" id="review-close" type="button" data-t="close">닫기</button></div>
+    <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
+    <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <dialog id="epilogue" aria-labelledby="epilogue-title">
-    <div class="panel-heading"><h2 id="epilogue-title" data-text="에필로그 · 23:52">에필로그 · 23:52</h2><button type="button" class="utility" id="epilogue-close" data-text="닫기">닫기</button></div>
-    <div class="epilogue-content">
-      <img class="epilogue-image" src="./studio.webp" alt="" width="1672" height="941" loading="lazy">
-      <p class="note" data-text="꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.">꺼져 있던 수신기로 돌아왔다. 처음에 잡음에 묻혔던 부분이 이번에는 또렷하다.</p>
-      <button class="utility" id="epilogue-replay" type="button" data-text="첫 교신 다시 듣기">첫 교신 다시 듣기</button>
-      <blockquote id="epilogue-transcript"></blockquote>
-      <p class="note" data-text="건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.">건너편 윤서는 아직 방송할 수 있는 누군가에게 순임의 목소리를 부탁하고 있었다.</p>
-    </div>
-    <button class="utility epilogue-link" id="pier-from-epilogue" type="button" aria-haspopup="dialog"></button>
-  </dialog>
-  <dialog id="pier" aria-labelledby="pier-title">
-    <div class="panel-heading"><h2 id="pier-title" data-text="선착장 · 자정 이후">선착장 · 자정 이후</h2><button type="button" class="utility" id="pier-close" data-text="닫기">닫기</button></div>
-    <img class="epilogue-image" src="./pier.webp" alt="" width="1279" height="720" loading="lazy">
-    <div class="pier-progress"><span id="pier-clock"></span><span id="pier-budget"></span></div>
-    <p id="pier-narration" tabindex="-1" aria-live="polite"></p>
-    <div id="pier-replay"></div>
-    <ul class="pier-notes" id="pier-notes" aria-label="선착장에서 확인한 단서" data-label="선착장에서 확인한 단서"></ul>
-    <p class="note" id="pier-prompt"></p>
-    <div id="pier-actions" class="pier-actions"></div>
-  </dialog>
-  <dialog id="share" aria-labelledby="share-title">
-    <div class="panel-heading"><h2 id="share-title" data-text="소개 영상 · 공유">소개 영상 · 공유</h2><button type="button" class="utility" id="share-close" data-text="닫기">닫기</button></div>
-    <video id="intro-video" controls playsinline preload="none" data-label="스포일러 없는 15초 소개 영상" aria-label="스포일러 없는 15초 소개 영상"></video>
-    <p class="note" data-text="결말을 드러내지 않는 소개 영상과 공유 카드입니다.">결말을 드러내지 않는 소개 영상과 공유 카드입니다.</p>
-    <label class="share-field"><span data-text="플레이 링크">플레이 링크</span><input id="share-url" type="url" readonly></label>
-    <div class="share-tools">
-      <button type="button" class="utility" id="copy-link" data-text="링크 복사">링크 복사</button>
-      <a class="utility" id="download-card" download data-text="공유 카드 받기">공유 카드 받기</a>
-    </div>
-    <p class="note" id="share-result" aria-live="polite"></p>
-  </dialog>
-  <dialog id="prologue" aria-labelledby="prologue-episode">
-    <div class="prologue-art" aria-hidden="true">
-      <img data-prologue-image="harbor" data-src="./opening-harbor.webp" alt="">
-      <img data-prologue-image="pier" data-src="./pier.webp" alt="">
-      <img data-prologue-image="studio" data-src="./studio.webp" alt="">
-      <img data-prologue-image="receiver" data-src="./opening-receiver.webp" alt="">
-    </div>
-    <div class="prologue-bar">
-      <h2 id="prologue-episode" data-text="한려 FM 폐국의 밤">한려 FM 폐국의 밤</h2>
-      <button class="utility prologue-start" id="prologue-start" type="button" autofocus data-text="바로 시작">바로 시작</button>
-    </div>
-    <div class="prologue-title" id="prologue-title" hidden>
-      <p class="prologue-title-main" data-text="마지막 방송까지 8분">마지막 방송까지 8분</p>
-      <p class="prologue-title-clock"><time datetime="23:52">23:52</time></p>
-      <p class="prologue-mission" data-text="자정 전에 인터뷰 원본을 찾아 방송하세요.">자정 전에 인터뷰 원본을 찾아 방송하세요.</p>
-    </div>
-    <div class="prologue-footer">
-      <p class="prologue-caption" id="prologue-caption" aria-live="polite"></p>
-      <div class="prologue-controls">
-        <button class="utility" id="prologue-sound" type="button" aria-pressed="false" data-label="게임 소리">소리 끔</button>
-        <div class="prologue-progress" aria-hidden="true"><span id="prologue-progress"></span></div>
-      </div>
-    </div>
-  </dialog>
-  <dialog id="settings" aria-labelledby="settings-title">
-    <div class="panel-heading"><h2 id="settings-title" data-text="설정 · 저장">설정 · 저장</h2><button type="button" class="utility" id="settings-close" data-text="닫기">닫기</button></div>
-    <section class="settings-section" aria-labelledby="mix-title">
-      <h3 id="mix-title" data-text="소리 크기">소리 크기</h3>
-      <label class="mix-control" for="speech-level"><span data-text="음성">음성</span><input id="speech-level" type="range" min="0" max="100" step="5" data-mix="speech"><span class="mix-value" aria-hidden="true"></span></label>
-      <label class="mix-control" for="effects-level"><span data-text="효과음">효과음</span><input id="effects-level" type="range" min="0" max="100" step="5" data-mix="effects"><span class="mix-value" aria-hidden="true"></span></label>
-      <label class="mix-control" for="ambience-level"><span data-text="배경음">배경음</span><input id="ambience-level" type="range" min="0" max="100" step="5" data-mix="ambience"><span class="mix-value" aria-hidden="true"></span></label>
-      <button class="utility" id="prologue-replay" type="button" aria-haspopup="dialog" data-text="오프닝 다시 보기">오프닝 다시 보기</button>
-    </section>
-    <section class="settings-section" aria-labelledby="offline-audio-title">
-      <h3 id="offline-audio-title" data-text="오프라인 음성">오프라인 음성</h3>
-      <p class="note" id="offline-audio-status" role="status"></p>
-      <button class="utility" id="offline-audio-toggle" type="button" hidden></button>
-    </section>
-    <section class="settings-section" aria-labelledby="transfer-title">
-      <h3 id="transfer-title" data-text="진행 기록 옮기기">진행 기록 옮기기</h3>
-      <p class="note" data-text="저장 파일로 단서와 결말, 현재 회차를 옮길 수 있습니다. 파일은 이 기기에서 읽습니다.">저장 파일로 단서와 결말, 현재 회차를 옮길 수 있습니다. 파일은 이 기기에서 읽습니다.</p>
-      <div class="settings-buttons">
-        <button class="utility" id="export-save" type="button" data-text="진행 파일 내보내기">진행 파일 내보내기</button>
-        <button class="utility" id="import-save" type="button" data-text="진행 파일 불러오기">진행 파일 불러오기</button>
-        <input id="save-file" type="file" accept=".json,application/json" hidden>
-      </div>
-      <p class="note" id="transfer-status" role="status"></p>
-      <section class="transfer-preview" id="transfer-preview" aria-labelledby="transfer-preview-title" hidden>
-        <h4 id="transfer-preview-title" tabindex="-1" data-text="이어 할 회차 선택">이어 할 회차 선택</h4>
-        <p class="note" id="transfer-summary"></p>
-        <dl id="transfer-rounds"></dl>
-        <div class="settings-buttons">
-          <button class="utility" id="keep-device-run" type="button" data-text="이 기기의 회차 계속">이 기기의 회차 계속</button>
-          <button class="utility" id="use-file-run" type="button" data-text="파일의 회차 이어하기">파일의 회차 이어하기</button>
-          <button class="utility" id="cancel-transfer" type="button" data-text="취소">취소</button>
-        </div>
-      </section>
-    </section>
-  </dialog>
-  <noscript>이 게임을 플레이하려면 브라우저에서 자바스크립트를 사용해 주세요.</noscript>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw.js'));</script>
 </body>
 </html>
