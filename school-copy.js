@@ -438,6 +438,8 @@ const SCHOOL_COPY = {
   holdYellowReceipt: ['노랑 교실 · 안내 수신', 'Yellow classroom · Notice received'],
   liveNotice: ['교실 스피커 연결', 'Classroom speakers connected'],
   backupLiveTitle: ['예비 문제 생방송', 'Backup Question Live'],
+  backupSolvingTitle: ['예비 문제 풀이', 'Solving the backup question'],
+  backupGradingTitle: ['예비 문제 채점', 'Grading the backup question'],
   backupOnAirStatus: ['예비 문제 송출', 'Backup question on air'],
   backupAnswersStatus: ['두 팀 답안 도착', 'Both answers received'],
   backupOnAirCue: ['12:39 · 두 교실에 새 문제 방송', '12:39 · New question goes to both classrooms'],

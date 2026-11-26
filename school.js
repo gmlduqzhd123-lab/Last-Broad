@@ -857,7 +857,7 @@ function liveEndingView() {
     line: 'winnerReadyCaption', status: 'winnerReadyTitle', mic: 'off', file: 'announcementStandby', standby: true,
   };
   if (beat === 'classrooms') return {
-    title: 'backupLiveTitle', caption: 'backupClassroomsCaption', cue: 'backupClassroomsCue',
+    title: 'backupSolvingTitle', caption: 'backupClassroomsCaption', cue: 'backupClassroomsCue',
     line: 'backupClassroomsCaption', status: 'classroomTitle', mic: 'off', file: 'announcementStandby', standby: true,
   };
   if (beat === 'notice') return {
@@ -874,7 +874,7 @@ function liveEndingView() {
     line: 'holdAnswerScene', status: 'holdAnswerTitle', mic: 'jiuMic', file: 'liveNotice', skip: 'endingSkip',
   };
   if (beat === 'answers') return {
-    title: 'backupLiveTitle', caption: 'backupAnswerCards', cue: 'backupAnswersCue',
+    title: 'backupGradingTitle', caption: 'backupAnswerCards', cue: 'backupAnswersCue',
     line: 'backupAnswersScene', status: 'backupAnswersStatus', mic: 'off', file: 'announcementStandby', standby: true,
   };
   return {
