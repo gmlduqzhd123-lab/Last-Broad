@@ -181,6 +181,7 @@ function toggleSound() {
   else if (game.sound && !intro && !$('epilogue').open) {
     if (game.run.swapBriefPending) playSwapBrief();
     else if (awaitingQuestion(game.run)) playQuestion();
+    else if (endingScene?.beat === 'question') playAudio('backup');
   }
 }
 function renderSound() {
@@ -414,16 +415,12 @@ function startClassrooms(kind) {
   showPhase(0);
 }
 
-function showBackupQuestion(scene, waitForConfirmation = false) {
+function showBackupQuestion(scene) {
   clearSceneTimers(scene);
   scene.beat = 'question';
   render();
-  if (waitForConfirmation) {
-    $('ending-title').focus();
-    playAudio('backup');
-  } else {
-    playEndingBeat(scene, 'backup', game.sound ? 9200 : 3900, () => startClassrooms('backup'));
-  }
+  $('ending-title').focus();
+  playAudio('backup');
 }
 
 function playEndingBeat(scene, clip, duration, next) {
@@ -619,7 +616,9 @@ function actionChoices() {
   }
   if (r.leaked) {
     const lastChance = lastBackupChance(r);
-    if (canStartBackup(r)) {
+    const canLeaveNow = canStartBackup(r);
+    const clueWarning = lastChance ? 'finalClueCost' : canLeaveNow ? 'handoffClueCost' : '';
+    if (canLeaveNow) {
       const explain = known('proof');
       const inHall = r.room === 'hall';
       const detail = inHall ? 'handoffHallDetail' : explain ? 'handoffKnownDetail' : 'handoffDetail';
@@ -643,9 +642,10 @@ function actionChoices() {
       briefJiu(run);
       record('logBackup');
     }, 'backup'), false, lastChance ? 'finalBackupAir' : 'useBackup');
-    offer('hold', lastChance ? 'finalHoldDetail' : 'holdDetail', () => step('', briefJiu, 'held'), false, lastChance ? 'finalBackupHold' : 'hold');
-    if (r.room === 'studio' && !known('practice')) offer('practice', lastChance ? 'finalClueCost' : 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
-    if (r.room === 'studio' && !known('schedule')) offer('schedule', lastChance ? 'finalClueCost' : 'scheduleDetail', () => step('scheduleMessage', learnSchedule));
+    const holdDetail = lastChance ? 'finalHoldDetail' : canLeaveNow ? 'handoffHoldDetail' : 'holdDetail';
+    offer('hold', holdDetail, () => step('', briefJiu, 'held'), false, lastChance ? 'finalBackupHold' : 'hold');
+    if (r.room === 'studio' && !known('practice')) offer('practice', clueWarning || 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
+    if (r.room === 'studio' && !known('schedule')) offer('schedule', clueWarning || 'scheduleDetail', () => step('scheduleMessage', learnSchedule));
     return choices;
   }
   if (r.swapBriefPending) {
@@ -744,7 +744,8 @@ function renderChoices() {
     button.dataset.primary = String(index === 0);
     const title = node('span', '', 'action-top');
     title.append(node('strong', t(label)), node('small', t(free ? 'noCost' : 'one')));
-    button.append(title, node('span', t(detail), 'action-detail'));
+    const warning = detail === 'handoffClueCost' || detail === 'finalClueCost';
+    button.append(title, node('span', t(detail), warning ? 'action-detail action-warning' : 'action-detail'));
     button.addEventListener('click', run);
     return button;
   }));
@@ -841,11 +842,22 @@ function classroomView() {
   return null;
 }
 
+function renderBackupOptions(id) {
+  $(id).replaceChildren(...QUIZ.backup.options.map((option, index) =>
+    node('li', OPTION_NUMBER[index] + ' ' + t(option))));
+}
+
 function renderClassrooms(view) {
   $('classrooms').hidden = !view;
   if (!view) return;
   const { kind, phase } = view;
   $('classrooms').dataset.phase = phase;
+  const keepQuestion = kind === 'backup' && (phase === 'received' || phase === 'solving');
+  $('classroom-question').hidden = !keepQuestion;
+  if (keepQuestion) {
+    text('classroom-question-text', QUIZ.backup.question);
+    renderBackupOptions('classroom-options');
+  }
   for (const team of TEAMS) {
     const arrived = phase === 'ready' || (phase === 'first' && team === 'yellow');
     const state = arrived ? 'accepted' : phase === 'received' ? 'received' : 'solving';
@@ -897,7 +909,7 @@ function liveEndingView() {
     title: 'backupLiveTitle', caption: beat === 'explain' ? game.run.briefed ? 'backupExplain' : 'backupRestartCaption' : QUIZ.backup.question,
     cue: beat === 'explain' ? 'backupExplainCue' : 'backupOnAirCue',
     line: 'backupOnAirScene', status: 'backupOnAirStatus', mic: 'jiuMic', file: 'backupNow',
-    skip: beat === 'explain' ? 'backupSkip' : 'backupConfirm',
+    skip: beat === 'explain' ? 'backupSkip' : '',
   };
 }
 
@@ -946,7 +958,13 @@ function renderScene(live = liveEndingView()) {
       : lastBackupChance(r) ? 'finalBackupTitle' : missedBackup(r) ? 'lateTight' : r.assigned ? 'cueHeld'
         : r.leaked ? r.leakMicOff ? 'cueOff' : 'cueOn'
           : r.queued ? r.swapBriefPending ? 'cueSwapped' : pendingQuestion ? 'questionDeliveryCue' : r.elapsed >= CUE_TIME ? 'questionDeliveredCue' : 'cueSwapped' : 'cuePending'), clock(r.elapsed));
-  text('monitor-label', monitorInfo()[0]);
+  const openingRecord = game.loop === 1 && r.elapsed === 0 && !r.outcome;
+  $('opening-record').hidden = !openingRecord;
+  const monitorSlot = $(openingRecord ? 'opening-record' : 'console-monitor');
+  if ($('monitor-controls').parentElement !== monitorSlot) monitorSlot.append($('monitor-controls'));
+  text('monitor-label', openingRecord ? 'openingRecordListen' : monitorInfo()[0]);
+  if (openingRecord) $('monitor').setAttribute('aria-describedby', 'opening-record-copy');
+  else $('monitor').removeAttribute('aria-describedby');
   $('monitor').disabled = Boolean(live || r.swapBriefPending || r.handoffPending);
   $('replay-incident').hidden = Boolean(live || r.outcome !== 'backup');
   $('incident-compare').hidden = Boolean(live || monitorSelection !== 'incidentTranscript');
@@ -1011,17 +1029,15 @@ function renderEnding(live) {
   $('ending').dataset.beat = endingScene?.beat ?? 'result';
   const showingBackupOptions = endingScene?.beat === 'question';
   $('backup-options').hidden = !showingBackupOptions;
-  if (showingBackupOptions) {
-    $('backup-options').replaceChildren(...QUIZ.backup.options.map((option, index) =>
-      node('li', OPTION_NUMBER[index] + ' ' + t(option))));
-  }
+  $('backup-confirm').hidden = !showingBackupOptions;
+  if (showingBackupOptions) renderBackupOptions('backup-options');
   for (const id of ['ending-count', 'ending-story', 'ending-next', 'rewind', 'end-replay']) $(id).hidden = Boolean(live);
   $('ending-skip').hidden = !live?.skip;
   $('ending-epilogue').hidden = Boolean(live) || !epilogueUnlocked();
   text('ending-epilogue', game.epilogueSeen ? 'epilogueReplay' : 'epilogueOpen');
   const ready = endingScene?.beat === 'winnerReady';
   $('backup-announce').hidden = !ready;
-  $('ending-actions').hidden = Boolean(live && !live.skip && !ready);
+  $('ending-actions').hidden = Boolean(live && !live.skip && !ready && !showingBackupOptions);
   $('ending-on-air').hidden = !live || live.mic === 'off';
   $('ending-standby').hidden = !live?.standby;
   $('hold-receipts').hidden = r.outcome !== 'held' || endingScene?.beat === 'notice';
@@ -1158,15 +1174,21 @@ function renderJournal() {
 function renderComparison() {
   for (const button of $('compare-options').children) button.setAttribute('aria-pressed', String(selected.has(button.dataset.recording)));
   $('compare').disabled = selected.size !== 2 || known('proof');
-  $('source-choice').hidden = !game.compared || known('proof') || !known('mic') || !known('schedule');
-  text('source-prompt', game.run.leaked ? 'sourcePrompt' : 'sourcePromptFuture');
+  const r = game.run;
+  const readyToConnect = game.compared && !known('proof') && known('mic') && known('schedule');
+  $('source-choice').hidden = !readyToConnect;
+  $('compare-evidence').hidden = !readyToConnect;
+  text('source-prompt', r.leaked ? 'sourcePrompt' : 'sourcePromptFuture');
+  const micWasOff = r.leaked ? r.leakMicOff : !r.mic;
+  text('compare-mic-evidence', micWasOff ? 'compareMicOffEvidence' : 'compareMicIndependentEvidence');
   $('connect').disabled = !selectedSource;
   for (const button of $('source-choice').querySelectorAll('[data-source]')) {
     button.setAttribute('aria-pressed', String(button.dataset.source === selectedSource));
   }
-  const proof = game.run.leaked ? 'pairConnectedThisRun' : game.run.queued ? 'pairConnectedPrevented' : 'pairConnected';
+  const proof = r.leaked ? 'pairConnectedThisRun' : r.queued ? 'pairConnectedPrevented' : 'pairConnected';
   const feedback = comparisonFeedback || (known('proof') ? proof : game.compared
     ? !known('schedule') ? 'pairNeedSchedule' : !known('mic') ? 'pairNeedMic' : 'pairYes' : '');
+  $('compare-result').hidden = !feedback;
   text('compare-feedback', feedback);
 }
 function openJournal() {
@@ -1197,6 +1219,8 @@ $('compare').addEventListener('click', () => {
   comparisonFeedback = game.compared ? '' : 'pairNo';
   save();
   renderComparison();
+  $('compare-result').scrollIntoView({ block: 'center' });
+  $('compare-feedback').focus({ preventScroll: true });
 });
 for (const button of $('source-choice').querySelectorAll('[data-source]')) {
   button.addEventListener('click', () => {
@@ -1218,7 +1242,6 @@ $('connect').addEventListener('click', () => {
   save();
   renderJournal();
   render();
-  $('compare-feedback').setAttribute('tabindex', '-1');
   $('compare-feedback').focus({ preventScroll: true });
 });
 $('journal-open').addEventListener('click', openJournal);
@@ -1320,12 +1343,16 @@ $('end-replay').addEventListener('click', () => replayEnding(game.run, true));
 $('ending-skip').addEventListener('click', () => {
   const scene = endingScene;
   if (!scene || $('ending-skip').hidden) return;
-  if (scene.beat === 'explain') showBackupQuestion(scene, true);
-  else if (scene.beat === 'question') startClassrooms('backup');
+  if (scene.beat === 'explain') showBackupQuestion(scene);
   else if (scene.beat === 'notice') showHoldReceipts(scene);
   else if (scene.beat === 'received') showHoldAnswer(scene);
   else if (scene.beat === 'announce') showWinnerReactions(scene);
   else finishEndingScene(false);
+});
+$('backup-confirm').addEventListener('click', () => {
+  if (endingScene?.beat !== 'question') return;
+  startClassrooms('backup');
+  $('classrooms-title').focus();
 });
 $('backup-announce').addEventListener('click', () => {
   if (endingScene?.beat === 'winnerReady') beginWinnerAnnouncement(endingScene);

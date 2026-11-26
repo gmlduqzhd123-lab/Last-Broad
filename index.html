@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=12">
-  <script defer src="./school-copy.js?v=12"></script>
-  <script defer src="./school.js?v=12"></script>
+  <link rel="stylesheet" href="./school.css?v=14">
+  <script defer src="./school-copy.js?v=14"></script>
+  <script defer src="./school.js?v=14"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -82,6 +82,9 @@
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
           <p id="pre-broadcast-line" class="pre-broadcast-line" role="status" hidden></p>
+          <div class="opening-record" id="opening-record" hidden>
+            <p id="opening-record-copy" data-t="openingRecord">헤드폰에 12:40의 사고 기록이 들어왔어요. 12:36에 나갈 음원을 확인하세요.</p>
+          </div>
         </div>
       </section>
 
@@ -96,18 +99,22 @@
           <div class="channel" id="headphone-channel"><span data-t="headphones">미리듣기</span><strong id="headphone-status"></strong></div>
         </div>
         <p class="cue" id="cue"></p>
-        <button class="listen" id="monitor" type="button">
-          <span class="play-symbol" aria-hidden="true">▶</span>
-          <span id="monitor-label"></span>
-          <small data-t="noCost">시간 유지</small>
-        </button>
-        <p class="monitor-caption" id="monitor-caption" role="status" tabindex="-1" hidden></p>
-        <p class="monitor-origin" id="monitor-origin" hidden></p>
-        <p class="excerpt-prompt" id="excerpt-prompt" data-t="excerptPrompt" hidden></p>
-        <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" aria-describedby="excerpt-prompt" hidden>수첩에 저장</button>
-        <button class="utility excerpt" id="excerpt-compare" type="button" data-t="excerptCompare" hidden>수첩에서 두 녹음 비교하기</button>
-        <button class="utility excerpt" id="replay-incident" type="button" data-t="previewLeak" hidden>12:36 정답 유출 다시 듣기</button>
-        <button class="utility excerpt" id="incident-compare" type="button" data-t="incidentCompare" hidden>수첩에서 연습 원본과 비교</button>
+        <div id="console-monitor">
+          <div id="monitor-controls">
+            <button class="listen" id="monitor" type="button">
+              <span class="play-symbol" aria-hidden="true">▶</span>
+              <span id="monitor-label"></span>
+              <small data-t="noCost">시간 유지</small>
+            </button>
+            <p class="monitor-caption" id="monitor-caption" role="status" tabindex="-1" hidden></p>
+            <p class="monitor-origin" id="monitor-origin" hidden></p>
+            <p class="excerpt-prompt" id="excerpt-prompt" data-t="excerptPrompt" hidden></p>
+            <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" aria-describedby="excerpt-prompt" hidden>수첩에 저장</button>
+            <button class="utility excerpt" id="excerpt-compare" type="button" data-t="excerptCompare" hidden>수첩에서 두 녹음 비교하기</button>
+            <button class="utility excerpt" id="replay-incident" type="button" data-t="previewLeak" hidden>12:36 정답 유출 다시 듣기</button>
+            <button class="utility excerpt" id="incident-compare" type="button" data-t="incidentCompare" hidden>수첩에서 연습 원본과 비교</button>
+          </div>
+        </div>
       </section>
 
       <div class="play-step">
@@ -120,7 +127,11 @@
           <p data-t="swapBriefCaption">지우 “이름이 똑같아서 아침 연습 파일을 올렸어. 지금 진짜 결승 문제로 바꿨어.”</p>
         </section>
         <section id="classrooms" class="classrooms" aria-labelledby="classrooms-title" hidden>
-          <h2 id="classrooms-title" data-t="classroomTitle">두 교실의 답안 상황</h2>
+          <h2 id="classrooms-title" data-t="classroomTitle" tabindex="-1">두 교실의 답안 상황</h2>
+          <div class="classroom-question" id="classroom-question" hidden>
+            <p id="classroom-question-text"></p>
+            <ul class="backup-options" id="classroom-options" aria-labelledby="classroom-question-text"></ul>
+          </div>
           <ul class="classroom-list">
             <li id="blue-classroom"><span data-t="classroomBlue">파랑 교실</span><strong id="blue-classroom-status"></strong></li>
             <li id="yellow-classroom"><span data-t="classroomYellow">노랑 교실</span><strong id="yellow-classroom-status"></strong></li>
@@ -183,6 +194,7 @@
             <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
             <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
             <button class="utility" id="ending-skip" type="button" data-t="endingSkip" hidden>결과 바로 보기</button>
+            <button class="primary" id="backup-confirm" type="button" data-t="backupConfirm" aria-describedby="ending-caption" hidden>문제 확인 · 두 교실 풀이 보기</button>
           </div>
         </section>
       </div>
@@ -232,6 +244,19 @@
       <ol id="journal-clues" class="clues"></ol>
       <section id="compare-area" class="compare" aria-labelledby="compare-title">
         <h3 id="compare-title" data-t="compareTitle" tabindex="-1">녹음 두 개를 대조하기</h3>
+        <div class="compare-result" id="compare-result" hidden>
+          <p id="compare-feedback" role="status" tabindex="-1"></p>
+          <ul class="compare-evidence" id="compare-evidence" hidden>
+            <li data-t="compareQueueEvidence">12:36 예약 · 08:41 파일</li>
+            <li id="compare-mic-evidence"></li>
+          </ul>
+          <div class="source-choice" id="source-choice" role="group" aria-labelledby="source-prompt" hidden>
+            <p id="source-prompt">이대로라면 12:36에 어느 쪽에서 정답이 나갈까요?</p>
+            <button class="utility" type="button" data-source="mic" data-t="mic" aria-pressed="false">마이크</button>
+            <button class="utility" type="button" data-source="file" data-t="queuedSource" aria-pressed="false">예약 음원</button>
+            <button type="button" class="primary" id="connect" data-t="connect">12:36 재생표와 연결</button>
+          </div>
+        </div>
         <p data-t="comparePrompt">마지막 소리가 같은 녹음 두 개를 고르세요.</p>
         <div id="recording-pair" class="recording-pair" hidden>
           <div class="recording-sample" id="practice-sample" hidden>
@@ -246,13 +271,6 @@
         <p id="recording-missing" data-t="recordingMissing" hidden>방송실에서 아침 연습 원본을 찾으면 두 소리를 비교할 수 있어요.</p>
         <div class="compare-options" id="compare-options"></div>
         <button type="button" class="utility" id="compare" data-t="compare">두 녹음 대조</button>
-        <p id="compare-feedback" role="status"></p>
-        <div class="source-choice" id="source-choice" hidden>
-          <p id="source-prompt">이대로라면 12:36에 어느 쪽에서 정답이 나갈까요?</p>
-          <button class="utility" type="button" data-source="mic" data-t="mic" aria-pressed="false">마이크</button>
-          <button class="utility" type="button" data-source="file" data-t="queuedSource" aria-pressed="false">예약 음원</button>
-          <button type="button" class="primary" id="connect" data-t="connect">12:36 재생표와 연결</button>
-        </div>
       </section>
     </div>
   </dialog>
@@ -262,6 +280,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v13.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v14.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
