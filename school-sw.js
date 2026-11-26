@@ -1,12 +1,13 @@
 'use strict';
 
-const CACHE = 'last-broad-school-v1';
+const CACHE = 'last-broad-school-v2';
 const PREFIX = 'last-broad-school-';
 const CORE = [
-  './', './index.html', './school.css?v=1', './school-copy.js?v=1', './school.js?v=1',
+  './', './index.html', './school.css?v=2', './school-copy.js?v=2', './school.js?v=2',
   './media/school-studio.webp', './manifest.webmanifest', './ys-install.js', './ys-qr.js', './qr.svg',
   './icons/favicon-32.png', './icons/icon-192.png', './icons/apple-touch-icon.png',
-  ...['future', 'opening', 'answer', 'door', 'question', 'hold', 'backup', 'clean', 'student']
+  ...['future-review', 'opening', 'answer', 'door', 'question', 'hold', 'backup', 'clean', 'student',
+    'handoff-known', 'hold-known', 'backup-known']
     .map((name) => './audio/school-' + name + '.mp3'),
 ];
 

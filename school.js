@@ -5,8 +5,9 @@ const CUE_TIME = 4;
 const INTRO_LENGTH = 20000;
 const SAVE_KEY = 'hallyeo-fm-quiz-final-v1';
 const AUDIO = {
-  future: 'future', opening: 'opening', leak: 'answer', door: 'door',
+  future: 'future-review', opening: 'opening', leak: 'answer', door: 'door',
   question: 'question', hold: 'hold', backup: 'backup', clean: 'clean', student: 'student',
+  handoffKnown: 'handoff-known', holdKnown: 'hold-known', backupKnown: 'backup-known',
 };
 const CLUES = {
   future: { title: 'futureClue', fact: 'futureFact', caption: 'future', clip: 'future' },
@@ -22,29 +23,35 @@ const ENDINGS = {
   backup: { title: 'endBackupTitle', caption: 'endBackupCaption', story: 'endBackupStory', next: 'endBackupNext', clip: 'backup' },
   clean: { title: 'endCleanTitle', caption: 'endCleanCaption', story: 'endCleanStory', next: 'endCleanNext', clip: 'clean' },
 };
+const EXPLAINED_ENDINGS = {
+  held: { caption: 'endHeldKnownCaption', story: 'endHeldKnownStory', next: 'endHeldKnownNext', clip: 'holdKnown' },
+  backup: { caption: 'endBackupKnownCaption', story: 'endBackupKnownStory', clip: 'backupKnown' },
+};
 const INTRO_SHOTS = [
   { at: 0, clock: '12:40', shot: 'future', caption: 'introHook' },
-  { at: 1300, clock: '12:40', shot: 'future', caption: 'future', clip: 'future' },
-  { at: 9200, clock: '12:32', shot: 'shift', caption: 'introShift' },
-  { at: 11100, clock: '12:32', shot: 'studio', caption: 'opening', clip: 'opening' },
+  { at: 900, clock: '12:40', shot: 'future', caption: 'future', clip: 'future' },
+  { at: 10600, clock: '12:32', shot: 'shift', caption: 'introShift' },
+  { at: 12100, clock: '12:32', shot: 'studio', caption: 'opening', clip: 'opening' },
   { at: 16900, clock: '12:32', shot: 'studio', caption: 'introFinal' },
 ];
 
 const newRun = () => ({
   elapsed: 0, room: 'studio', mic: true, queued: false, leaked: false, leakMicOff: false,
-  assigned: false, backup: false, returned: false, checked: false, outcome: '', message: '', log: [],
+  assigned: false, backup: false, returned: false, briefed: false,
+  previewChecked: false, classroomsReady: false, answersClosed: false, checked: false, winnerCard: false,
+  outcome: '', message: '', log: [],
 });
 const $ = (id) => document.getElementById(id);
 const clock = (elapsed) => '12:' + (32 + elapsed);
 
 function load() {
   const fresh = {
-    version: 1, loop: 1, known: ['future', 'leak'], unlocked: [], compared: false, seen: false,
+    version: 2, loop: 1, known: ['future'], unlocked: [], compared: false, seen: false,
     language: 'ko', sound: false, previous: null, run: newRun(),
   };
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (!saved || saved.version !== fresh.version) return fresh;
+    if (!saved || (saved.version !== 1 && saved.version !== fresh.version)) return fresh;
     for (const flag of ['compared', 'seen', 'sound']) fresh[flag] = saved[flag] === true;
     if (saved.language === 'en') fresh.language = 'en';
     if (Number.isSafeInteger(saved.loop) && saved.loop > 0) fresh.loop = saved.loop;
@@ -57,6 +64,9 @@ function load() {
     if (!run || !Number.isInteger(run.elapsed) || run.elapsed < 0 || run.elapsed > LIMIT
       || (run.room !== 'studio' && run.room !== 'hall') || (run.outcome && !Object.hasOwn(ENDINGS, run.outcome))) return fresh;
     fresh.run = { ...fresh.run, ...run };
+    if (run.checked) fresh.run.answersClosed = true;
+    if (saved.version === 1 && run.queued) fresh.run.briefed = true;
+    if (run.leaked && !fresh.known.includes('leak')) fresh.known.push('leak');
     fresh.run.log = Array.isArray(run.log) ? run.log.filter((entry) =>
       Number.isInteger(entry?.minute) && entry.minute >= 0 && entry.minute <= LIMIT && Object.hasOwn(SCHOOL_COPY, entry.text)).slice(-20) : [];
     return fresh;
@@ -117,6 +127,19 @@ function renderSound() {
 
 function record(key) { game.run.log.push({ minute: game.run.elapsed, text: key }); }
 
+function endingFor(run) {
+  const basic = ENDINGS[run.outcome];
+  if (!basic) return null;
+  if (run.briefed && EXPLAINED_ENDINGS[run.outcome]) return { ...basic, ...EXPLAINED_ENDINGS[run.outcome] };
+  return run.outcome === 'held' && !run.leakMicOff ? { ...basic, story: 'endHeldOther' } : basic;
+}
+
+function briefJiu(run) {
+  if (!known('proof') || run.briefed) return;
+  run.briefed = true;
+  record('logBriefed');
+}
+
 function finish(kind) {
   const r = game.run;
   r.elapsed = LIMIT;
@@ -126,7 +149,7 @@ function finish(kind) {
   save();
   render();
   $('ending-title').focus();
-  playAudio(ENDINGS[kind].clip);
+  playAudio(endingFor(r).clip);
 }
 
 function step(message, apply = null, outcome = '') {
@@ -147,6 +170,7 @@ function step(message, apply = null, outcome = '') {
       r.leaked = true;
       r.leakMicOff = !r.mic;
       learn('mic');
+      learn('leak');
       record(r.leakMicOff ? 'logLeakOff' : 'logLeakOn');
       r.message = r.room === 'hall' ? 'incidentHall' : 'incidentScene';
       playAudio('leak', false, () => playAudio('student'));
@@ -201,30 +225,64 @@ function actionChoices() {
   function offer(id, detail, run, free = false) { choices.push({ id, detail, run, free }); }
   if (r.leaked) {
     if (!r.assigned && r.elapsed === CUE_TIME) {
-      offer('handoff', 'handoffDetail', () => step('handoffMessage', (run) => { run.room = 'hall'; run.assigned = true; }));
+      const explain = known('proof');
+      offer('handoff', explain ? 'handoffKnownDetail' : 'handoffDetail', () => {
+        step(explain ? 'handoffKnownMessage' : 'handoffMessage', (run) => {
+          briefJiu(run);
+          run.room = 'hall';
+          run.assigned = true;
+        });
+        if (explain) playAudio('handoffKnown');
+      });
     }
     if (r.assigned && !r.backup && r.elapsed <= 5) offer('getBackup', 'getDetail', () => step('getMessage', (run) => { run.backup = true; }));
     if (r.backup && !r.returned && r.elapsed <= 6) offer('returnStudio', 'returnDetail', () => step('returnMessage', (run) => { run.room = 'studio'; run.returned = true; }));
-    if (r.returned) offer('useBackup', 'useDetail', () => step('backupClip', () => record('logBackup'), 'backup'));
-    offer('hold', 'holdDetail', () => step('', null, 'held'));
+    if (r.returned) offer('useBackup', 'useDetail', () => step('backupClip', (run) => {
+      briefJiu(run);
+      record('logBackup');
+    }, 'backup'));
+    offer('hold', 'holdDetail', () => step('', briefJiu, 'held'));
     if (r.room === 'studio' && !known('practice')) offer('practice', 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
     if (r.room === 'studio' && !known('schedule')) offer('schedule', 'scheduleDetail', () => step('scheduleMessage', () => learn('schedule')));
     return choices;
   }
   if (r.elapsed >= CUE_TIME) {
-    if (!r.checked) offer('checkAnswers', 'checkAnswersDetail', () => step('checkAnswersMessage', (run) => { run.checked = true; }));
-    else offer('announce', 'announceDetail', () => step('', null, 'clean'));
+    if (!r.answersClosed && r.elapsed < LIMIT - 2) {
+      offer('closeAnswers', 'closeAnswersDetail', () => step('closeAnswersMessage', (run) => { run.answersClosed = true; }));
+    } else if (!r.checked && r.elapsed < LIMIT - 1) {
+      offer('checkAnswers', 'checkAnswersDetail', () => step('checkAnswersMessage', (run) => { run.checked = true; }));
+    } else if (!r.winnerCard && r.elapsed < LIMIT - 1) {
+      offer('collectCard', 'collectCardDetail', () => step('collectCardMessage', (run) => { run.winnerCard = true; }));
+    } else {
+      offer('announce', 'announceDetail', () => step('', null, 'clean'));
+    }
     return choices;
   }
   if (r.room === 'hall') {
     offer('returnStudio', 'returnDetail', () => step('returnMessage', (run) => { run.room = 'studio'; }));
+  } else if (r.queued) {
+    if (!r.previewChecked && r.elapsed < CUE_TIME - 1) {
+      offer('previewQueued', 'previewQueuedDetail', () => {
+        step('previewQueuedMessage', (run) => { run.previewChecked = true; });
+        playAudio('question');
+      });
+    } else if (!r.classroomsReady && r.elapsed < CUE_TIME - 1) {
+      offer('checkClassrooms', 'checkClassroomsDetail', () => step('checkClassroomsMessage', (run) => { run.classroomsReady = true; }));
+    } else {
+      offer('callFinal', 'callFinalDetail', () => step('callFinalMessage'));
+    }
+    return choices;
   } else if (!r.queued) {
-    if (known('proof')) offer('swap', 'swapDetail', () => step('swapMessage', (run) => { run.queued = true; }));
+    if (known('proof')) offer('swap', 'swapDetail', () => step('swapMessage', (run) => {
+      briefJiu(run);
+      run.queued = true;
+    }));
     if (r.mic) offer('mute', 'muteDetail', () => step('micMessage', (run) => { run.mic = false; learn('mic'); }));
     if (!known('schedule')) offer('schedule', 'scheduleDetail', () => step('scheduleMessage', () => learn('schedule')));
     if (!known('practice')) offer('practice', 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
     if (!known('proof') && known('practice') && known('schedule')) {
-      const choice = { id: 'check', detail: 'checkDetail', run: openJournal, free: true };
+      const choice = known('leak') ? { id: 'check', detail: 'checkDetail', run: openJournal, free: true }
+        : { id: 'findExcerpt', detail: 'findExcerptDetail', run: playMonitor, free: true };
       if (known('mic')) choices.unshift(choice);
       else choices.push(choice);
     }
@@ -255,7 +313,7 @@ function renderChoices() {
 function monitorInfo() {
   const r = game.run;
   if (r.outcome === 'backup') return ['previewBackup', 'backupClip', 'backup'];
-  if (r.queued && r.elapsed >= CUE_TIME) return ['previewQuestion', 'questionClip', 'question'];
+  if (r.queued) return ['previewQuestion', 'questionClip', 'question'];
   if (r.leaked) return ['previewLeak', 'leakClip', 'leak'];
   return ['previewFuture', 'future', 'future'];
 }
@@ -264,6 +322,7 @@ function renderScene() {
   const r = game.run;
   $('scene').dataset.room = r.room;
   text('place', r.room);
+  text('scoreboard', r.outcome === 'clean' ? 'scoreClean' : r.outcome === 'backup' ? 'scoreBackup' : 'scoreTie');
   text('scene-line', r.message || (game.loop > 1 ? 'remembered' : 'present'));
   const onAir = !r.outcome && !r.assigned;
   $('air-label').dataset.held = String(!onAir);
@@ -284,6 +343,7 @@ function renderScene() {
   text('monitor-label', monitorInfo()[0]);
   $('monitor-caption').hidden = !monitorSelection;
   if (monitorSelection) text('monitor-caption', monitorSelection);
+  $('save-excerpt').hidden = monitorSelection !== 'future' || known('leak');
 }
 
 function logRows(container) {
@@ -297,12 +357,12 @@ function renderEnding() {
   const r = game.run;
   $('ending').hidden = !r.outcome;
   if (!r.outcome) return;
-  const ending = ENDINGS[r.outcome];
+  const ending = endingFor(r);
   text('ending-category', 'endingLabel');
   text('ending-count', 'endingCount', game.unlocked.length);
   text('ending-title', ending.title);
   text('ending-caption', ending.caption);
-  text('ending-story', r.outcome === 'held' && !r.leakMicOff ? 'endHeldOther' : ending.story);
+  text('ending-story', ending.story);
   text('ending-next', game.unlocked.length === 3 ? 'endAll' : ending.next);
 }
 function render() {
@@ -414,11 +474,22 @@ $('connect').addEventListener('click', () => {
 $('journal-open').addEventListener('click', openJournal);
 $('journal-close').addEventListener('click', () => $('journal').close());
 $('journal').addEventListener('close', () => { stopAudio(); $('journal-open').focus({ preventScroll: true }); });
-$('monitor').addEventListener('click', () => {
+function playMonitor() {
   const [, caption, clip] = monitorInfo();
   monitorSelection = caption;
   renderScene();
   playAudio(clip, true);
+}
+$('monitor').addEventListener('click', playMonitor);
+$('save-excerpt').addEventListener('click', () => {
+  if (monitorSelection !== 'future' || known('leak')) return;
+  learn('leak');
+  record('excerptLogged');
+  monitorSelection = 'excerptSaved';
+  save();
+  render();
+  $('monitor-caption').setAttribute('tabindex', '-1');
+  $('monitor-caption').focus({ preventScroll: true });
 });
 $('review').addEventListener('click', () => {
   stopAudio();
@@ -429,7 +500,7 @@ $('review').addEventListener('click', () => {
 $('review-close').addEventListener('click', () => $('review-dialog').close());
 $('review-rewind').addEventListener('click', rewind);
 $('rewind').addEventListener('click', rewind);
-$('end-replay').addEventListener('click', () => playAudio(ENDINGS[game.run.outcome]?.clip, true));
+$('end-replay').addEventListener('click', () => playAudio(endingFor(game.run)?.clip, true));
 $('sound').addEventListener('click', toggleSound);
 
 function tickIntro(now) {
@@ -465,7 +536,7 @@ function closeIntro() {
   $('intro').close();
   if (!replay && game.run.elapsed === 0 && !game.run.outcome) {
     $('monitor').focus({ preventScroll: true });
-    if (shot.at < 11100) playAudio('opening');
+    if (shot.clip !== 'opening' && shot.at < 12100) playAudio('opening');
   }
 }
 $('intro-start').addEventListener('click', closeIntro);

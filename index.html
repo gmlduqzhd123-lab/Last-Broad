@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=1">
-  <script defer src="./school-copy.js?v=1"></script>
-  <script defer src="./school.js?v=1"></script>
+  <link rel="stylesheet" href="./school.css?v=2">
+  <script defer src="./school-copy.js?v=2"></script>
+  <script defer src="./school.js?v=2"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -59,7 +59,7 @@
     <div class="play-grid">
       <section class="scene" id="scene" aria-labelledby="game-title">
         <div class="scene-inner">
-          <p id="place"></p>
+          <div class="scene-meta"><p id="place"></p><p id="scoreboard"></p></div>
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
         </div>
@@ -82,6 +82,7 @@
           <small data-t="noCost">시간 유지</small>
         </button>
         <p class="monitor-caption" id="monitor-caption" role="status" hidden></p>
+        <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" hidden>사고 구간 수첩에 담기</button>
       </section>
 
       <section class="choices" id="choices" aria-label="행동">
