@@ -95,8 +95,14 @@ body[data-incident="true"] .cue { color: var(--red); }
 .play-step { grid-area: choices; display: grid; gap: 8px; min-width: 0; }
 .answer-cards { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
 .answer-cards h2 { margin: 0 0 6px; font-size: .96rem; }
+#grade-question { color: var(--paper); font-size: .9rem; }
+#grade-prompt { margin: 3px 0 7px; color: var(--gold); font-size: .8rem; }
+#grade-feedback:not(:empty) { margin-top: 7px; color: var(--gold); font-size: .83rem; }
 #answer-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .answer-card { display: grid; gap: 2px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--deep); }
+.answer-cards[data-grading="true"] .answer-card { padding: 0; border: 0; }
+.answer-select { display: grid; gap: 3px; align-content: center; min-height: 54px; padding: 7px 8px; text-align: left; border: 1px solid #768d97; border-radius: 6px; background: var(--deep); }
+.answer-select:hover { background: #334952; border-color: var(--gold); }
 .answer-team, .answer-mark { font-size: .76rem; line-height: 1.25; }
 .answer-team { color: var(--muted); }
 .answer-card[data-team="blue"] .answer-team { color: #a6d8f5; }
@@ -121,7 +127,10 @@ body[data-incident="true"] .cue { color: var(--red); }
 .history li, .review-list li { display: flex; gap: 9px; padding: 7px 0; align-items: baseline; border-bottom: 1px solid #344952; }
 .history time, .review-list time { color: var(--gold); font: .83rem var(--mono); white-space: nowrap; }
 .ending { border: 1px solid #62706b; border-radius: 10px; padding: 16px; background: #22312f; }
-.ending-meta { display: flex; justify-content: space-between; gap: 6px; color: var(--mint); font-size: .83rem; }
+.ending-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--mint); font-size: .83rem; }
+.ending:is([data-beat="announce"], [data-beat="notice"]) { border-color: #b7806b; background: #322728; }
+.hold-receipts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0; padding: 0; list-style: none; }
+.hold-receipts li { padding: 7px; border: 1px solid #566c69; border-radius: 6px; background: var(--deep); color: var(--mint); font-size: .8rem; }
 .ending h2 { margin: 4px 0 8px; font-size: clamp(1.45rem, 3vw, 2.3rem); letter-spacing: -.04em; }
 .ending #ending-caption { font-weight: 700; color: var(--gold); min-height: 1.65em; margin-bottom: 6px; white-space: pre-line; }
 .ending #ending-story { color: var(--paper); }
@@ -202,4 +211,9 @@ dialog::backdrop { background: #080e17bb; }
   body:is([data-emergency="true"], [data-delivery="true"]) .scene-inner { padding-block: 7px; }
   body[data-emergency="true"] .actions [data-action="hold"] { grid-column: 1 / -1; }
 }
-@media (prefers-reduced-motion: no-preference) { .ending { animation: reveal .22s ease-out both; } @keyframes reveal { from { opacity: .5; transform: translateY(4px); } } }
+@media (prefers-reduced-motion: no-preference) {
+  .ending { animation: reveal .22s ease-out both; }
+  .ending[data-beat="received"] .hold-receipts li { animation: reveal .24s ease-out both; }
+  .ending[data-beat="received"] .hold-receipts li + li { animation-delay: .36s; }
+  @keyframes reveal { from { opacity: .5; transform: translateY(4px); } }
+}
