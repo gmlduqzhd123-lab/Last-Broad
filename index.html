@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=7">
-  <script defer src="./school-copy.js?v=7"></script>
-  <script defer src="./school.js?v=7"></script>
+  <link rel="stylesheet" href="./school.css?v=8">
+  <script defer src="./school-copy.js?v=8"></script>
+  <script defer src="./school.js?v=8"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -35,6 +35,7 @@
           <div class="menu-items">
             <button class="utility" id="language" type="button"></button>
             <button class="utility" id="replay-intro" type="button" data-t="replayIntro">오프닝 다시 보기</button>
+            <button class="utility" id="menu-epilogue" type="button" aria-haspopup="dialog" hidden>12:41 후일담 보기</button>
             <button class="utility" type="button" data-ys-install data-t="install">앱 설치</button>
             <button class="utility" type="button" data-qr data-t="share">QR 코드로 공유</button>
           </div>
@@ -55,6 +56,19 @@
         <span id="budget"></span>
       </div>
       <div class="track" id="track" aria-hidden="true"></div>
+    </section>
+
+    <section class="loop-goals" id="loop-goals" aria-labelledby="goals-title" hidden>
+      <div class="goals-header">
+        <h2 id="goals-title" data-t="goalTitle">이번 회차 목표</h2>
+        <p id="goal-recommended" hidden></p>
+      </div>
+      <div class="goal-actions">
+        <button class="utility" id="goal-clean" data-goal="clean" type="button" aria-pressed="false"></button>
+        <button class="utility" id="goal-backup" data-goal="backup" type="button" aria-pressed="false"></button>
+        <button class="utility" id="goal-held" data-goal="held" type="button" aria-pressed="false"></button>
+      </div>
+      <p id="goal-tip" role="status"></p>
     </section>
 
     <div class="play-grid">
@@ -94,6 +108,14 @@
       </section>
 
       <div class="play-step">
+        <section class="swap-brief" id="swap-brief" aria-labelledby="swap-brief-title" hidden>
+          <h2 id="swap-brief-title" data-t="swapBriefTitle">12:36 방송 직전 · 예약 교체 완료</h2>
+          <ol class="swap-files">
+            <li><span data-t="swapBriefPreviousLabel">기존 예약</span><strong data-t="swapBriefPreviousFile">08:41 아침 연습</strong></li>
+            <li><span data-t="swapBriefNextLabel">새 예약</span><strong data-t="swapBriefNextFile">12:24 결승 문제</strong></li>
+          </ol>
+          <p data-t="swapBriefCaption">지우 “이름이 똑같아서 아침 연습 파일을 올렸어. 지금 진짜 결승 문제로 바꿨어.”</p>
+        </section>
         <section id="classrooms" class="classrooms" aria-labelledby="classrooms-title" hidden>
           <h2 id="classrooms-title" data-t="classroomTitle">두 교실의 답안 상황</h2>
           <ul class="classroom-list">
@@ -112,6 +134,15 @@
             <dt data-t="privateScoreLabel">진행자만 보는 채점 점수</dt><dd id="private-score"></dd>
             <dt data-t="publicPending">교실 점수판 · 발표 대기</dt><dd id="pending-public-score"></dd>
           </dl>
+        </section>
+
+        <section class="classrooms announcement-check" id="announcement-check" aria-labelledby="announcement-title" hidden>
+          <h2 id="announcement-title" data-t="announcementCheckTitle">두 교실의 발표 준비</h2>
+          <ul class="classroom-list">
+            <li id="blue-announcement"><span data-t="classroomBlue">파랑 교실</span><strong id="blue-announcement-status"></strong></li>
+            <li id="yellow-announcement"><span data-t="classroomYellow">노랑 교실</span><strong id="yellow-announcement-status"></strong></li>
+          </ul>
+          <p id="announcement-line" role="status"></p>
         </section>
 
         <section class="choices" id="choices" aria-label="행동">
@@ -139,6 +170,7 @@
           <p class="ending-next" id="ending-next"></p>
           <div class="end-actions" id="ending-actions">
             <button class="primary" id="backup-announce" type="button" data-t="announce" hidden>결승 결과 발표하기</button>
+            <button class="primary" id="ending-epilogue" type="button" aria-haspopup="dialog" hidden>12:41 후일담 보기</button>
             <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
             <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
             <button class="utility" id="ending-skip" type="button" data-t="endingSkip" hidden>결과 바로 보기</button>
@@ -166,6 +198,21 @@
     <div class="dialog-actions">
       <button class="utility" id="intro-sound" type="button" aria-pressed="false"></button>
       <button class="primary" id="intro-start" type="button" data-t="start">바로 시작</button>
+    </div>
+  </dialog>
+
+  <dialog id="epilogue" aria-labelledby="epilogue-title" class="intro epilogue">
+    <div class="intro-view epilogue-view" id="epilogue-view" data-shot="archive">
+      <div class="intro-copy">
+        <time id="epilogue-clock" role="status">12:40</time>
+        <h2 id="epilogue-title" data-t="epilogueTitle">다음 방송</h2>
+        <p id="epilogue-frame"></p>
+        <p id="epilogue-caption"></p>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="primary" id="epilogue-advance" type="button" data-t="epilogueAdvance">헤드폰 벗기</button>
+      <button class="utility" id="epilogue-close" type="button" data-t="close">닫기</button>
     </div>
   </dialog>
 
@@ -205,6 +252,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v7.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v8.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
