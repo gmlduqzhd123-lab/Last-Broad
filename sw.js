@@ -1,10 +1,10 @@
 // 같은 주소의 다른 앱과 캐시 저장소를 같이 쓰므로 내 접두어 캐시만 지운다
-const CACHE = 'last-broad-v17';
+const CACHE = 'last-broad-v18';
 const CACHE_PREFIX = 'last-broad-v';
 const AUDIO_CACHE = 'last-broad-audio-v1';
 const audioPath = new URL('audio/', self.registration.scope).pathname;
 const CORE = [
-  './', './index.html', './style.css?v=20.1', './locale.js?v=20', './game.js?v=20',
+  './', './index.html', './style.css?v=21', './locale.js?v=21', './game.js?v=21',
   './studio.webp', './hall.webp', './hall-empty.webp', './archive.webp', './roof.webp', './pier.webp',
   './opening-harbor.webp', './opening-receiver.webp',
   './manifest.webmanifest', './ys-install.js', './ys-qr.js', './qr.svg', './icons/icon-192.png',

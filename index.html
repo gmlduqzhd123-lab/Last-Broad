@@ -26,9 +26,9 @@
   <title>마지막 방송까지 8분</title>
   <link rel="icon" href="./icons/icon-192.png">
   <link rel="preload" as="image" href="./studio.webp">
-  <link rel="stylesheet" href="./style.css?v=20.1">
-  <script defer src="./locale.js?v=20"></script>
-  <script defer src="./game.js?v=20"></script>
+  <link rel="stylesheet" href="./style.css?v=21">
+  <script defer src="./locale.js?v=21"></script>
+  <script defer src="./game.js?v=21"></script>
 </head>
 <body>
   <header class="masthead">
@@ -107,6 +107,10 @@
                   <div class="receiver-screen" role="status">
                     <span class="signal-bars" id="receiver-wave" aria-hidden="true"></span>
                     <div class="receiver-message">
+                      <div class="opening-exchange" id="opening-dialogue" hidden>
+                        <strong data-text="이쪽 윤서 · 방송실">이쪽 윤서 · 방송실</strong>
+                        <p id="receiver-local"></p>
+                      </div>
                       <strong id="receiver-lock"></strong>
                       <p id="receiver-caption"></p>
                     </div>
@@ -120,8 +124,10 @@
             </div>
           </div>
           <div class="scene-body">
-            <p class="late-contact" id="late-contact" role="status" hidden data-text="폐국 안내 시작 · 건너편 마이크는 열려 있다">폐국 안내 시작 · 건너편 마이크는 열려 있다</p>
+            <p class="late-contact" id="late-contact" role="status" hidden data-text="이쪽 폐국 안내 시작 · 보조 회선은 자정까지 연결">이쪽 폐국 안내 시작 · 보조 회선은 자정까지 연결</p>
+            <p class="route-deadline" id="route-deadline" hidden></p>
             <div id="featured-action" class="featured-action" hidden></div>
+            <div id="route-alternative" class="featured-action" hidden></div>
             <div id="late-contact-actions" class="late-contact-actions" hidden></div>
             <div id="lead-radio"><section class="radio-exchange" id="radio-exchange" aria-labelledby="radio-exchange-title" hidden>
               <div class="panel-heading">
@@ -155,6 +161,7 @@
               </div>
               <details id="recap-details">
                 <summary data-text="이번 회차의 사건 기록">이번 회차의 사건 기록</summary>
+                <p class="recap-times" id="recap-times" hidden></p>
                 <div class="turning-point" id="turning-point">
                   <h4 data-text="결정적 순간">결정적 순간</h4>
                   <time id="turning-time"></time>
@@ -185,6 +192,7 @@
                 </div>
               </div>
               <p id="transmission-caption" role="status"></p>
+              <p id="transmission-clocks" hidden></p>
               <button class="utility" id="transmission-skip" type="button" data-text="결말 보기">결말 보기</button>
             </section>
             <section class="readiness" id="roof-reservation" aria-labelledby="roof-reservation-title" hidden>

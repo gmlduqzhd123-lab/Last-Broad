@@ -5,9 +5,7 @@ const CART_ARRIVES = 2;
 const ON_AIR = 3;
 const CART_LEAVES = 5;
 const REPLY_WINDOW = 5;
-const TRANSMISSION_CUT = 1500;
 const CALL_QUESTION_START = 4.6145625; // The full call ends at 4.3745625 s, followed by 240 ms of static.
-const CALL_LEAD_LENGTH = 3600;
 const SAVE_KEY = 'haemun-fm-eight-minutes-v1';
 const AUDIO_CACHE = 'last-broad-audio-v1';
 const DEFAULT_MIX = { speech: 100, effects: 65, ambience: 25 };
@@ -24,6 +22,7 @@ const tapeDelivered = '재호의 무전 “윤서 씨한테 원본 전달했어�
 const contactOpened = '예약한 시각에 건너편 채널이 열렸다.';
 const contactMissed = '예약 시각에 잡음만 들린다. 건너편 교신은 이미 지나갔다.';
 const syncMissed = '동시 송출 신호를 보낼 순간이 지났다. 열린 교신에 답할 시간은 남아 있다.';
+const stationsClosed = '자정에 이쪽 송신기와 보조 회선이 닫혔다.';
 const localYunseo = '이쪽 윤서 · 방송실';
 const remoteYunseo = '건너편 윤서 · 수신기';
 const closingCaption = '[이쪽 방송실] “한려 FM의 폐국을 안내합니다.”';
@@ -68,23 +67,24 @@ const evidence = {
 };
 const voices = {
   prologue: './audio/prologue-signal.wav',
-  openingEcho: './audio/opening-echo.mp3',
-  opening: './audio/opening.mp3',
+  openingEcho: './audio/opening-call.mp3',
+  opening: './audio/opening-pair.mp3',
   call: './audio/call.wav',
   delivery: './audio/delivery.wav',
   distantBell: './audio/distant-bell.wav',
   localBell: './audio/local-bell.wav',
   onAir: './audio/harbor-opening.wav',
-  voices: './audio/pier-signoff.wav',
-  signal: './audio/ending-signal.mp3',
-  both: './audio/two-nights.mp3',
+  voices: './audio/ending-voices-pier.mp3',
+  signal: './audio/ending-reply.mp3',
+  both: './audio/ending-together.mp3',
   receiverStatic: './audio/receiver-static.wav',
   receiverStaff: './audio/receiver-staff.wav',
   receiverEcho: './audio/receiver-echo.wav',
   callWithQuestion: './audio/call-with-question.wav',
-  signalRevealed: './audio/ending-signal-revealed.mp3',
-  bothRevealed: './audio/two-nights-revealed.mp3',
-  epilogue: './audio/epilogue.mp3',
+  callWithHandoff: './audio/call-handoff.mp3',
+  signalRevealed: './audio/ending-reply-revealed.mp3',
+  bothRevealed: './audio/ending-together-revealed.mp3',
+  epilogue: './audio/epilogue-recovered.mp3',
   pierCall: './audio/pier-call.wav',
   pierAnswer: './audio/pier-answer.wav',
 };
@@ -96,9 +96,10 @@ const rooms = {
 };
 
 const opening = [
-  { speaker: localYunseo, text: '“순임 씨는 아버지가 기다리던 부두에 자기 목소리가 닿길 바랐어요. 원본이 철수 상자에 섞였대요. 자정이면 송신기가 꺼져요. 복도부터 봐 줄래요?”' },
-  { speaker: remoteYunseo, text: '“거긴 아직 23시 52분이죠? 그쪽 송신기는 아직 살아 있나요?”', radio: true },
+  { speaker: localYunseo, text: '“여기는 한려 FM. 송신기 준비됐어요.”' },
+  { speaker: remoteYunseo, text: '“여기는 한려 FM. 거긴 아직 23시 52분이죠?”', radio: true },
 ];
+const openingRequest = '“순임 씨는 아버지가 기다리던 부두에 자기 목소리가 닿길 바랐어요. 원본이 철수 상자에 섞였대요. 자정이면 송신기가 꺼져요. 복도부터 봐 줄래요?”';
 
 const clues = {
   echo: { title: '같은 목소리 두 개', fact: '23:52, 눈앞의 윤서와 꺼진 수신기에서 들려온 목소리가 같았다.', question: '수신기 속 윤서는 어느 밤에 있는 걸까?', clip: 'opening' },
@@ -113,17 +114,23 @@ const clues = {
   onAir: { title: '윤서의 오프닝', fact: '이쪽 시계 23:55. 윤서가 “비 오는 항구의 밤입니다”라고 방송을 시작했다.', question: '건너편 방송 일지에는 이 멘트가 언제 찍혔을까?', clip: 'onAir' },
   airlog: { title: '건너편 방송 일지', fact: '자료실의 자동 수신 일지에 “비 오는 항구의 밤입니다”가 건너편 시계 23:56으로 기록돼 있다.', question: '종소리에서 찾은 시차와도 일치할까?', clip: 'onAir' },
   remoteSlot: { title: '건너편 편성표의 빈칸', fact: '방송 일지 뒷면의 편성표에서 ‘순임 인터뷰’ 칸이 비어 있다. 다음 줄은 폐국 안내다.', question: '건너편 윤서는 이 칸을 두고 무슨 말을 했을까?' },
-  remoteRequest: { title: '23:57 · 건너편 윤서의 부탁', fact: '교신이 열리자 건너편 윤서가 “그쪽엔 순임 씨 원본이 아직 있어요?”라고 물었다.', question: '왜 윤서는 우리 쪽에 남아 있는 원본을 찾을까?', clip: 'callWithQuestion' },
+  remoteHandoff: { title: '건너편 원본 인계 기록', fact: '다른 테이프에는 인수 서명이 있다. 순임의 원본만 인계 시각과 받은 사람 칸이 비어 있다.', question: '편성표의 빈칸과 같은 테이프일까?' },
+  remoteRequest: { title: '23:57 · 건너편 윤서의 부탁', fact: '23:57 교신에서 건너편 윤서는 이쪽에 순임의 원본이 남아 있는지 확인했다.', question: '왜 윤서는 우리 쪽에 남아 있는 원본을 찾을까?', clip: 'callWithQuestion' },
   sunim: { title: '순임이 남긴 부탁', fact: '테이프에 순임의 메모가 붙어 있다. 아버지는 큰비가 온 밤마다 라디오로 귀항 소식을 확인하며 부두에서 기다렸다.', question: '순임은 마지막 방송을 누가 듣길 바랐을까?' },
 };
 const callWords = '“여기는 한려 FM. 아직 듣고 있는 사람 있나요?”';
 const callQuestion = '건너편 윤서 “그쪽엔 순임 씨 원본이 아직 있어요?”';
-const exchangeLines = [
-  { clip: 'delivery', channel: '직원 무전', live: '재호 “윤서 씨한테 원본 전달했어요.”', caption: tapeDelivered },
-  { clip: 'callWithQuestion', channel: '보조 채널', live: callQuestion, caption: `${callWords}\n${callQuestion}` },
-];
+const handoffQuestion = '건너편 윤서 “우리 쪽엔 원본이 안 왔어요. 그쪽엔 순임 씨 테이프가 아직 있어요?”';
+const callFor = (run) => run.handoffCall
+  ? { clip: 'callWithHandoff', text: handoffQuestion, length: 5700 }
+  : { clip: 'callWithQuestion', text: callQuestion, length: 3600 };
+const deliveryLine = { clip: 'delivery', channel: '직원 무전', live: '재호 “윤서 씨한테 원본 전달했어요.”', caption: tapeDelivered };
+function exchangeLines() {
+  const { clip, text } = callFor(game.run);
+  return [deliveryLine, { clip, channel: '보조 채널', live: text, caption: `${callWords}\n${text}` }];
+}
 const epilogueTranscript = `${remoteYunseo}\n${opening[1].text}\n[잡음이 걷힌다.]\n“그쪽엔 아직 시간이 있죠? 순임 씨 목소리, 그 방송에 실어 줘요.”`;
-const mysteryEvidence = ['remoteSlot', 'remoteRequest'];
+const mysteryEvidence = ['remoteSlot', 'remoteHandoff', 'remoteRequest'];
 const pierOpening = '자정이 지난 선착장. 마지막 방송을 듣던 당신 곁에는 휴대용 라디오와 대합실 스피커가 있다.';
 const pierCall = '라디오에서 순임의 마지막 인사가 흐른다. 기척도 없는 부두에서 두 번째 목소리가 들린다.\n“아직 여기서 듣고 있어요.”';
 const pierObservations = {
@@ -138,49 +145,57 @@ const pierAnswers = {
 };
 const newPierRun = () => ({ heard: false, checked: [], answer: '', completed: false });
 
+const openingBroadcastLine = '“듣고 있어요. 여기도 한려 FM이에요.”';
+const localTapeLine = '[이쪽 방송실] “아버지, 저 돌아왔어요.”';
+const remoteTapeLine = '[건너편 항구, 같은 목소리] “아버지, 저 돌아왔어요.”';
+const signalBeats = (reply, closingAt) => [[445, openingBroadcastLine], [4179, reply], [closingAt, closingCaption]];
+const dualBeats = (reply) => [[445, localTapeLine], [3058, remoteTapeLine], [5572, reply]];
+
 const endings = {
   voices: {
     title: '마을의 목소리',
-    story: '순임은 아버지가 비 오는 부두에서 라디오에 귀를 기울이던 밤을 이야기한다. 이제 그 목소리가 같은 부두에 닿는다. 배 한 척이 짧게 기적을 울린다. 건너편 윤서의 호출은 끝내 응답을 얻지 못한다.',
+    story: '순임의 인사가 아버지가 라디오를 듣던 부두에 닿는다. 짧은 뱃고동 뒤에 누군가 수신이 잘 된다고 답한다. 건너편 윤서의 호출에는 응답을 보내지 못했다.',
     follow: '다음 밤에는 옥상 수신 기록을 찾아보세요. 건너편 윤서는 몇 시에 다시 부를까요?',
     clip: 'voices',
-    duration: 5400,
-    transcript: '“아버지, 저 돌아왔어요.”\n[부두에서 짧게 기적이 울린다.]',
+    duration: 7450,
+    beats: [[445, '“아버지, 저 돌아왔어요.”'], [2798, '[부두에서 짧게 기적이 울린다.]'],
+      [3828, '[부두에서 들려온 답] “부두예요. 여기까지 잘 들려요.”']],
   },
   signal: {
     title: '건너편의 응답',
     story: '건너편 윤서가 당신의 대답을 듣고 인사를 건넨다. 이쪽 방송실에서는 폐국 안내가 흐르고 순임의 인터뷰 자리는 비어 있다.',
     follow: '다음 밤에는 인터뷰도 전파에 실을 수 있습니다. 자료실에서 두 장소를 한 번에 연결할 방법을 살펴보세요.',
     clip: 'signal',
-    duration: 11100,
-    transcript: `“듣고 있어요. 여기도 한려 FM이에요.”\n“그럼 이번 밤은 혼자 끝내지 않아도 되겠네요.”\n${closingCaption}`,
+    duration: 10600,
+    beats: signalBeats('“그럼 이번 밤은 혼자 끝내지 않아도 되겠네요.”', 7587),
   },
   both: {
     title: '두 밤의 방송',
     story: '옥상의 교신과 방송실의 테이프가 같은 순간에 열린다. 순임의 목소리가 두 밤의 항구에 번지고, 건너편 윤서가 답한다. 마침내 두 방송실에서 같은 이야기를 듣는다.',
     follow: '같은 밤을 다시 돌려 다른 선택이 남긴 방송도 들어 볼 수 있습니다.',
     clip: 'both',
-    duration: 7700,
-    transcript: '[이쪽 방송실] “아버지, 저 돌아왔어요.”\n[건너편 항구, 같은 목소리] “아버지, 저 돌아왔어요.”\n“이쪽 항구에도 들려요.”',
+    duration: 7800,
+    beats: dualBeats('“이쪽 항구에도 들려요.”'),
   },
 };
 
 const storyEndings = {
   signal: {
     story: '마이크를 열어 건너편 윤서에게 답한다. 순임의 원본 이야기를 꺼내자 짧은 정적이 흐른다. 이 밤의 인터뷰 시간은 지나갔다. 다음 밤에는 무엇을 전할지 알게 됐다.',
-    transcript: `“듣고 있어요. 여기도 한려 FM이에요.”\n“원본이 남아 있다면, 다음에는 순임 씨 목소리도 들려줘요.”\n${closingCaption}`,
+    beats: signalBeats('“원본이 남아 있다면, 다음에는 순임 씨 목소리도 들려줘요.”', 9043),
     clip: 'signalRevealed',
-    duration: 12500,
+    duration: 12100,
   },
   both: {
     story: '순임의 목소리가 두 밤의 항구에 번진다. 건너편 윤서는 비어 있던 인터뷰 시간에 이제 처음으로 순임을 듣는다. 같은 방송을 들으며 두 윤서가 마지막 인사를 건넨다.',
-    transcript: '[이쪽 방송실] “아버지, 저 돌아왔어요.”\n[건너편 항구, 같은 목소리] “아버지, 저 돌아왔어요.”\n“이쪽에서도 이제 들려요. 순임 씨 목소리였군요.”',
+    beats: dualBeats('“이쪽에서도 이제 들려요. 순임 씨 목소리였군요.”'),
     clip: 'bothRevealed',
     duration: 10200,
   },
 };
 
 const endingFor = (id, revealed) => revealed && storyEndings[id] ? { ...endings[id], ...storyEndings[id] } : endings[id];
+const endingTranscript = (ending) => ending.beats.map(([, line]) => line).join('\n');
 
 const transmissions = {
   voices: { start: '방송실 · 순임의 테이프', scene: '선착장 · 한려 FM 수신 중', art: './pier.webp' },
@@ -195,18 +210,19 @@ const newRun = () => ({
   receiverBand: 0, receiverTuned: false, courierBriefedEarly: false, courierByRadio: false, storyReply: false,
   intent: '',
   clockReviewed: false,
-  onAirAt: 0,
+  onAirAt: 0, handoffCall: false,
 });
 
 function restoreGame(old) {
   const requested = new URLSearchParams(location.search).get('lang');
-  const fresh = { version: 12, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX }, prologueSeen: false,
+  const fresh = { version: 13, loop: 1, known: ['echo'], unlocked: [], sound: false, mix: { ...DEFAULT_MIX }, prologueSeen: false,
     storySolved: false, storyReplies: [], epilogueSeen: false,
     previousLoop: null, pier: newPierRun(),
     language: requested === 'en' ? 'en' : 'ko', hypothesis: '', matches: [], nextQuestion: '', run: newRun() };
   try {
     if (!old || !Array.isArray(old.known) || !Array.isArray(old.unlocked)) return fresh;
     fresh.known = [...new Set(['echo', ...old.known.filter((id) => Object.hasOwn(clues, id))])];
+    if (old.version < 13 && fresh.known.includes('remoteSlot') && !fresh.known.includes('remoteHandoff')) fresh.known.push('remoteHandoff');
     fresh.unlocked = [...new Set(old.unlocked.filter((id) => Object.hasOwn(endings, id)))];
     fresh.storySolved = old.storySolved === true && mysteryEvidence.every((id) => fresh.known.includes(id));
     if (fresh.storySolved && Array.isArray(old.storyReplies)) {
@@ -243,6 +259,7 @@ function restoreGame(old) {
       && ['play', 'expired', 'ending'].includes(previous.phase) && Array.isArray(previous.used)
       && (previous.phase !== 'ending' || Object.hasOwn(endings, previous.ending))) {
       fresh.run = { ...newRun(), ...previous };
+      fresh.run.handoffCall = previous.handoffCall === true;
       if (!['contact', 'connect', 'mystery'].includes(fresh.run.intent)) fresh.run.intent = '';
       fresh.run.clockReviewed = previous.clockReviewed === true;
       if (!['voices', 'signal', 'both'].includes(fresh.run.console)) fresh.run.console = '';
@@ -265,8 +282,11 @@ function restoreGame(old) {
       }
       if (previous.phase === 'ending') {
         const finalAction = fresh.run.log.findLast((entry) => entry?.kind === 'action');
-        const minute = previous.onAirAt || finalAction?.minute;
+        const minute = old.version >= 13 ? previous.onAirAt || finalAction?.minute
+          : (finalAction?.minute || previous.onAirAt || LIMIT) - 1;
         fresh.run.onAirAt = Number.isInteger(minute) && minute > 0 ? Math.min(minute, LIMIT - 1) : LIMIT - 1;
+        if (old.version < 13) fresh.run.log = fresh.run.log.map((entry) =>
+          entry === finalAction ? { ...entry, minute: fresh.run.onAirAt } : entry);
         fresh.run.storyReply = previous.storyReply === true && fresh.storyReplies.includes(previous.ending);
         const ending = endingFor(previous.ending, fresh.run.storyReply);
         fresh.run.clip = ending.clip;
@@ -297,7 +317,7 @@ const t = (value) => game.language === 'en'
 const fmt = (value, ...args) => t(value).replace(/\{(\d+)\}/g, (_, index) => args[index]);
 const knows = (id) => game.known.includes(id);
 const learn = (id) => { if (!knows(id)) game.known.push(id); };
-const time = (elapsed) => elapsed === LIMIT ? '00:00' : '23:' + (52 + elapsed);
+const time = (elapsed) => elapsed >= LIMIT ? '00:0' + (elapsed - LIMIT) : '23:' + (52 + elapsed);
 const cartHere = (elapsed) => elapsed >= CART_ARRIVES && elapsed < CART_LEAVES;
 const epilogueUnlocked = () => game.unlocked.length === Object.keys(endings).length;
 const pierUnlocked = () => game.epilogueSeen && epilogueUnlocked();
@@ -359,7 +379,7 @@ function connectionRoute() {
     move('roof');
     steps.push({ id: 'reserve-relay' });
   } else if (room !== 'roof' && room !== 'studio') move('roof');
-  return { next: steps[0], feasible: r.elapsed + steps.length <= REPLY_WINDOW };
+  return { next: steps[0], needed: steps.length, feasible: r.elapsed + steps.length <= REPLY_WINDOW };
 }
 
 function save() {
@@ -441,7 +461,7 @@ function recording(context, id) {
 
 async function playClip(id, startAt = null, exchangeIndex = -1) {
   let thisPlayback;
-  const next = exchangeIndex === 0 ? exchangeLines[1].clip : '';
+  const next = exchangeIndex === 0 ? callFor(game.run).clip : '';
   const continueExchange = () => {
     if (next && thisPlayback === playback && hadRadioExchange() && !transmission) playClip(next, null, 1);
   };
@@ -470,7 +490,7 @@ async function playClip(id, startAt = null, exchangeIndex = -1) {
       if (speaking === source) {
         speaking = null;
         voiceId = '';
-        if (id === 'callWithQuestion' && game.mix.speech > 0 && context.state === 'running') heardCallRun = game.run;
+        if (id === callFor(game.run).clip && game.mix.speech > 0 && context.state === 'running') heardCallRun = game.run;
         if (exchangeIndex >= 0) setExchangeLine(-1);
         applyMix();
       }
@@ -698,7 +718,7 @@ function finishPrologue(completed = false) {
   $(atReceiver ? 'receiver-dial' : 'narration').focus({ preventScroll: true });
   if (continueVoice) {
     if (game.run.receiverTuned) listenToBand();
-    else playClip('openingEcho');
+    else playClip(game.loop === 1 ? 'opening' : 'openingEcho');
   }
 }
 
@@ -737,6 +757,9 @@ function renderReceiver() {
   dial.value = r.receiverBand;
   dial.setAttribute('aria-valuetext', t(band.label));
   panel.dataset.locked = String(r.receiverBand === 2);
+  panel.dataset.tuned = String(r.receiverTuned);
+  $('opening-dialogue').hidden = r.receiverTuned;
+  $('receiver-local').textContent = t(opening[0].text);
   $('receiver-lock').textContent = t(r.receiverTuned ? band.state : opening[1].speaker);
   $('receiver-caption').textContent = t(r.receiverTuned ? band.caption : opening[1].text);
   drawSignal($('receiver-wave'), band.wave);
@@ -801,9 +824,11 @@ function onMinute() {
     r.linked = r.elapsed === REPLY_WINDOW;
     events.push(r.linked ? contactOpened : contactMissed);
     if (r.linked) {
+      r.handoffCall = knows('remoteHandoff');
+      const call = callFor(r);
       learn('remoteRequest');
-      events.push(callWords, callQuestion);
-      r.clip ||= 'callWithQuestion';
+      events.push('건너편 보조 회선이 연결됐다. 양쪽이 연 회선은 이쪽 자정까지 이어진다.', callWords, call.text);
+      r.clip ||= call.clip;
     }
   }
   if (r.elapsed === REPLY_WINDOW + 1 && r.linked && r.dj && r.tape === 'delivered' && !r.consoleReady) {
@@ -812,15 +837,15 @@ function onMinute() {
   }
   if (r.elapsed === LIMIT) {
     r.phase = 'expired';
-    events.push('송출 종료. 붉은 불이 꺼지고 모든 주파수가 조용해진다.');
+    events.push(stationsClosed);
   }
   r.event = events.join('\n');
   events.forEach((event) => observe(event));
   return cue;
 }
 
-function observe(text, kind = 'event', args = []) {
-  game.run.log.push({ minute: game.run.elapsed, text, kind, args });
+function observe(text, kind = 'event', args = [], minute = game.run.elapsed) {
+  game.run.log.push({ minute, text, kind, args });
 }
 
 function step(message, speaker = '', action = '', args = [], logResult = false) {
@@ -875,31 +900,31 @@ function openPlaces() {
   $('places-dialog').showModal();
 }
 
-function finish(id, lead = {}) {
+function finish(id, onAirAt, lead = {}) {
   if (!game.unlocked.includes(id)) game.unlocked.push(id);
   const storyReply = game.storySolved && Object.hasOwn(storyEndings, id);
   if (storyReply && !game.storyReplies.includes(id)) game.storyReplies.push(id);
   const ending = endingFor(id, storyReply);
-  const onAirAt = Math.min(game.run.elapsed, LIMIT - 1);
   Object.assign(game.run, {
     ending: id, storyReply, onAirAt, elapsed: LIMIT, phase: 'ending', message: ending.story, speaker: '', event: '', clip: ending.clip,
   });
-  observe(ending.transcript);
+  if (game.run.log.at(-1)?.text === stationsClosed) game.run.log.pop();
+  observe(endingTranscript(ending), 'event', [], receiptAt(game.run));
+  observe(stationsClosed);
   save();
   startTransmission(lead);
 }
 
-function transmissionClip() {
-  const r = game.run;
-  return endingFor(r.ending, r.storyReply).clip;
-}
+const receiptAt = (run) => Math.min(run.onAirAt + 1, LIMIT);
+const transmissionMinute = () => transmission.recall ? REPLY_WINDOW
+  : transmission.cut ? receiptAt(game.run) : game.run.onAirAt;
 
 function renderTransmission() {
   const stage = $('transmission');
   stage.hidden = !transmission;
   $('narration').hidden = Boolean(transmission);
   if (!transmission) return;
-  const { id, cut, recall } = transmission;
+  const { id, cut, recall, beat, ending, call } = transmission;
   const scene = transmissions[id];
   const image = $('transmission-image');
   const art = cut ? scene.art : id === 'signal' ? rooms.roof.art : rooms.studio.art;
@@ -908,13 +933,19 @@ function renderTransmission() {
   stage.dataset.cut = String(cut);
   stage.dataset.recall = String(Boolean(recall));
   $('transmission-title').textContent = t(recall ? '건너편 윤서의 마지막 호출' : cut ? scene.scene : scene.start);
-  const caption = endingFor(id, game.run.storyReply).transcript;
-  $('transmission-caption').textContent = t(recall ? callQuestion : cut ? caption : '마지막 송출을 시작합니다.');
+  const caption = t(recall ? call.text : ending.beats[beat]?.[1] ?? '마지막 송출을 시작합니다.');
+  if ($('transmission-caption').textContent !== caption) $('transmission-caption').textContent = caption;
+  const minute = transmissionMinute();
+  $('clock').textContent = time(minute);
+  $('budget').textContent = t(recall ? '마지막 교신' : cut ? '수신 확인' : '송출 시작');
+  const clocks = $('transmission-clocks');
+  clocks.hidden = id === 'voices';
+  clocks.textContent = fmt('이쪽 {0} · 건너편 {1}', time(minute), time(minute + 1));
 }
 
 function closeTransmission(stopAudio = false) {
   if (!transmission) return;
-  clearTimeout(transmission.cutTimer);
+  clearTimeout(transmission.beatTimer);
   clearTimeout(transmission.endTimer);
   clearTimeout(transmission.callTimer);
   const restoreFocus = $('transmission').contains(document.activeElement);
@@ -928,29 +959,33 @@ function closeTransmission(stopAudio = false) {
 function playTransmissionVoice() {
   const sequence = transmission;
   if (!sequence.recall) {
-    playClip(transmissionClip());
+    playClip(sequence.ending.clip, () => (performance.now() - sequence.startedAt) / 1000);
     return;
   }
-  playClip('callWithQuestion', () => CALL_QUESTION_START).then((played) => {
+  playClip(sequence.call.clip, () => CALL_QUESTION_START).then((played) => {
     if (!played || transmission !== sequence || !sequence.recall) return;
     clearTimeout(sequence.callTimer);
-    sequence.callTimer = setTimeout(beginFinalBroadcast, CALL_LEAD_LENGTH);
+    sequence.callTimer = setTimeout(beginFinalBroadcast, sequence.call.length);
   });
 }
 
 function beginFinalBroadcast() {
   const sequence = transmission;
   sequence.recall = false;
-  sequence.cut = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!sequence.cut) {
-    new Image().src = transmissions[sequence.id].art;
-    sequence.cutTimer = setTimeout(() => {
-      sequence.cut = true;
+  sequence.startedAt = performance.now();
+  new Image().src = transmissions[sequence.id].art;
+  function cueNextLine() {
+    const nextBeat = sequence.ending.beats[sequence.beat + 1];
+    if (!nextBeat) return;
+    sequence.beatTimer = setTimeout(() => {
+      sequence.beat += 1;
+      sequence.cut = sequence.beat >= 1;
       renderTransmission();
-    }, TRANSMISSION_CUT);
+      cueNextLine();
+    }, Math.max(0, nextBeat[0] - (performance.now() - sequence.startedAt)));
   }
-  const ending = endingFor(sequence.id, game.run.storyReply);
-  sequence.endTimer = setTimeout(closeTransmission, ending.duration);
+  cueNextLine();
+  sequence.endTimer = setTimeout(closeTransmission, sequence.ending.duration);
   renderTransmission();
   if (game.sound) playTransmissionVoice();
   else stopClip();
@@ -960,12 +995,13 @@ function startTransmission({ recall = false, audible = false } = {}) {
   if (transmission || game.run.phase !== 'ending') return;
   stopSceneAudio();
   syncAmbience();
-  transmission = { id: game.run.ending, cut: false, recall };
+  const r = game.run;
+  transmission = { id: r.ending, cut: false, recall, beat: -1, ending: endingFor(r.ending, r.storyReply), call: callFor(r) };
   render();
   $('transmission-title').focus({ preventScroll: true });
   $('transmission-title').scrollIntoView({ block: 'nearest' });
   if (recall) {
-    transmission.callTimer = setTimeout(beginFinalBroadcast, CALL_LEAD_LENGTH);
+    transmission.callTimer = setTimeout(beginFinalBroadcast, transmission.call.length);
     if (audible) playTransmissionVoice();
   } else beginFinalBroadcast();
 }
@@ -994,7 +1030,7 @@ function loopMoments(run) {
     delete byTopic.tape;
   }
   const meaningful = [byTopic.tape, byTopic.contact].filter(Boolean);
-  if (run.phase === 'ending' && Object.hasOwn(endings, run.ending)) meaningful.push({ id: run.ending, minute: LIMIT });
+  if (run.phase === 'ending' && Object.hasOwn(endings, run.ending)) meaningful.push({ id: run.ending, minute: run.onAirAt });
   const fallback = byTopic.movement || byTopic.fallback;
   return (meaningful.length ? meaningful : [fallback].filter(Boolean)).sort((a, b) => a.minute - b.minute).slice(-2);
 }
@@ -1065,7 +1101,7 @@ function scrollGameToStart() {
 }
 
 function replayExchange() {
-  if (hadRadioExchange() && !transmission) playClip(exchangeLines[0].clip, null, 0);
+  if (hadRadioExchange() && !transmission) playClip(deliveryLine.clip, null, 0);
 }
 
 function playSceneVoice() {
@@ -1127,7 +1163,8 @@ function consoleActions() {
       disabled: !routesReady(r.routes), run: () => {
       if (!routesReady(r.routes) || r.phase !== 'play' || r.consoleReady || r.elapsed !== REPLY_WINDOW) return;
       r.consoleReady = true;
-      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 원본 위에 손을 얹고 송출 신호를 기다린다.', '', '동시 송출 신호 보내기'), true);
+      observe('23:57에 두 채널의 교신을 확정했다.');
+      update(step('두 레벨 미터가 동시에 움직인다. 윤서가 순임의 방송 순서를 확보했다.', '', '동시 송출 신호 보내기'), true);
       focusConsoleControl();
     } });
   } else {
@@ -1138,9 +1175,12 @@ function consoleActions() {
     }[r.console];
     actions.push({ id: 'finish-broadcast', title: control[0], detail: control[1], cost: '1행동', primary: true, run: () => {
       const recall = r.console !== 'voices' && r.linked && heardCallRun !== r;
-      const audible = game.sound || voiceId === 'delivery' || voiceId === 'callWithQuestion';
-      step(control[2], '', control[0]);
-      finish(r.console, { recall, audible });
+      const audible = game.sound || voiceId === deliveryLine.clip || voiceId === callFor(r).clip;
+      const onAirAt = r.elapsed;
+      observe(control[0], 'action');
+      observe('송출 시작');
+      step(control[2]);
+      finish(r.console, onAirAt, { recall, audible });
     } });
   }
   if (!r.consoleReady) {
@@ -1154,7 +1194,7 @@ function consoleActions() {
 }
 
 function cueDetail() {
-  return routesReady(game.run.routes) ? '23:57에 지금 연결한 두 채널로 신호를 보냅니다.' : '두 송출선을 연결하면 신호를 보낼 수 있습니다.';
+  return routesReady(game.run.routes) ? '23:57에 순임의 방송 자리를 확정합니다.' : '두 송출선을 연결하면 신호를 보낼 수 있습니다.';
 }
 
 function reserveRelay() {
@@ -1212,12 +1252,12 @@ function choices() {
     offer(id, titles[room], '', () => enter(room), true);
   }
   if (route && !route.feasible) {
-    const next = canRadioCourier() ? '연결표 확보. 다음 회차에는 무전으로 재호에게 원본을 맡기세요.'
-      : '연결표 확보. 다음 회차에는 윤서에게 방송실을 먼저 맡기세요.';
+    const next = canRadioCourier() ? '다음 밤 첫 행동은 재호에게 원본을 맡기는 무전입니다.'
+      : '다음 밤 첫 행동은 윤서에게 방송실을 맡기는 일입니다.';
     offer('prepare-rewind', '다음 회차 준비하기', next, reviewNight, true, '시간 유지');
   }
   if (r.intent === 'mystery' && needsMystery() && knows('remoteSlot')) {
-    offer('review-mystery', '편성표와 호출 대조하기', '두 단서를 수첩에서 나란히 확인합니다.', openMystery, true, '시간 유지');
+    offer('review-mystery', '편성표와 호출 대조하기', '편성표, 인계 기록, 무전을 수첩에서 대조합니다.', openMystery, true, '시간 유지');
   }
   if (r.intent === 'mystery' && game.storySolved && r.room !== 'roof' && r.elapsed < REPLY_WINDOW - 1) {
     offer('hear-reply-roof', '달라진 응답을 들으러 옥상으로', '옥상에서 건너편 교신을 예약합니다.', () => {
@@ -1287,9 +1327,12 @@ function choices() {
       '미라', false, () => learn('rundown'));
     scene('read-routing', '두 채널 연결표 펼치기', '방송실과 옥상에서 어떤 일을 할 수 있는지 확인합니다.', 'routing',
       '연결표 위에 두 사람이 그려져 있다. 방송실 재생기에서 한려 FM으로, 옥상 교신에서 보조 채널로 선이 이어진다.', '', true);
-    scene('read-airlog', '건너편 방송 일지 읽기', '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
-      '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”\n뒷면 편성표에는 순임의 인터뷰 칸이 비어 있다.',
-      '', false, () => learn('remoteSlot'));
+    const scouting = route && !route.feasible && !knows('airlog');
+    scene('read-airlog', scouting ? '이번 밤에 방송 일지 더 읽기' : '건너편 방송 일지 읽기',
+      scouting ? '건너편 방송에서 순임의 차례에 무슨 일이 있었는지 살펴봅니다.'
+        : '빗속 항구의 방송 시작 멘트가 다른 시계에 기록돼 있습니다.', 'airlog',
+      '건너편 방송 일지 23:56. 윤서의 첫 멘트가 적혀 있다. “비 오는 항구의 밤입니다.”\n뒷면 편성표에는 순임의 인터뷰 칸이 비어 있다.\n인계 장부에서 순임의 원본만 인계 시각과 받은 사람 칸이 비어 있다.',
+      '', false, () => { learn('remoteSlot'); learn('remoteHandoff'); });
   }
 
   if (r.room === 'roof') {
@@ -1472,7 +1515,9 @@ function spoken({ speaker, text, radio = false }) {
 function setExchangeLine(index) {
   activeExchangeLine = index;
   const caption = $('exchange-live');
-  const line = t(exchangeLines[index]?.live || '재호가 원본을 전했다. 건너편 윤서는 순임의 원본을 찾는다.');
+  const line = t(exchangeLines()[index]?.live || (game.run.handoffCall
+    ? '재호가 원본을 전했다. 건너편에는 원본이 도착하지 않았다.'
+    : '재호가 원본을 전했다. 건너편 윤서는 순임의 원본을 찾는다.'));
   if (caption.textContent !== line) caption.textContent = line;
   caption.dataset.channel = index === 1 ? 'relay' : index === 0 ? 'staff' : '';
   [...$('exchange-lines').children].forEach((row, position) => {
@@ -1496,7 +1541,7 @@ function renderExchange(show) {
     return;
   }
   renderExchangeStatus();
-  $('exchange-lines').replaceChildren(...exchangeLines.map(({ channel, caption }) => {
+  $('exchange-lines').replaceChildren(...exchangeLines().map(({ channel, caption }) => {
     const row = element('li');
     row.append(element('strong', channel), element('p', caption));
     return row;
@@ -1528,13 +1573,12 @@ function renderScene() {
 
   const story = [];
   if (intro) {
-    story.push(spoken(opening[0]));
-    story.push(spoken(opening[1]));
+    story.push(spoken({ speaker: localYunseo, text: openingRequest }));
   } else if (r.message && (r.message !== setting || r.phase !== 'play')) {
     story.push(spoken({ speaker: r.speaker, text: r.message }));
   }
   if (r.phase === 'ending') {
-    story.push(spoken({ speaker: '마지막 송출', text: endingFor(r.ending, r.storyReply).transcript, radio: true }));
+    story.push(spoken({ speaker: '마지막 송출', text: endingTranscript(endingFor(r.ending, r.storyReply)), radio: true }));
   }
   $('story').replaceChildren(...story);
   const exchange = hasRadioExchange();
@@ -1543,14 +1587,16 @@ function renderScene() {
   scene.dataset.liveConsole = String(liveCall && Boolean(r.console));
   scene.dataset.result = String(!transmission && r.phase !== 'play');
   $('solo-call').hidden = !liveCall || exchange;
-  $('solo-caption').textContent = t(callQuestion);
-  const event = liveCall ? r.event.split('\n').filter((line) => ![callWords, callQuestion].includes(line)
+  const call = callFor(r);
+  $('solo-caption').textContent = t(call.text);
+  const event = liveCall ? r.event.split('\n').filter((line) => ![callWords, call.text].includes(line)
     && (!exchange || line !== tapeDelivered) && (r.console || line !== syncMissed)).join('\n') : r.event;
   $('event').hidden = !event;
   $('event').textContent = t(event);
   renderExchange(exchange);
   const clip = intro ? 'opening' : r.clip;
-  const replayLabels = { opening: '첫 교신 듣기', delivery: '재호의 무전 듣기', call: '건너편 호출 듣기', callWithQuestion: '건너편 호출 듣기' };
+  const replayLabels = { opening: '두 윤서의 첫 교신 듣기', delivery: '재호의 무전 듣기', call: '건너편 호출 듣기',
+    callWithQuestion: '건너편 호출 듣기', callWithHandoff: '건너편 호출 듣기' };
   replayLabels.onAir = '오프닝 다시 듣기';
   const replay = !liveCall && clip ? [listenButton(clip, replayLabels[clip] ?? '마지막 송출 다시 듣기')] : [];
   if (!exchange && hadRadioExchange()) {
@@ -1567,9 +1613,12 @@ function renderScene() {
   }
   $('scene-tools').hidden = Boolean(transmission);
   $('replay').replaceChildren(...replay);
-  const lastMoment = intro ? game.previousLoop?.moments.at(-1) : null;
+  const pastMoments = intro ? game.previousLoop?.moments : null;
+  const lastMoment = pastMoments?.findLast(({ id }) => Object.hasOwn(endings, id)) ?? pastMoments?.at(-1);
   $('rewind-memory').hidden = !lastMoment;
-  $('rewind-memory').textContent = lastMoment ? fmt('지난 밤 {0} · {1}', time(lastMoment.minute), t(loopMarkers[lastMoment.id][1])) : '';
+  $('rewind-memory').textContent = !lastMoment ? '' : lastMoment.minute === LIMIT && Object.hasOwn(endings, lastMoment.id)
+    ? fmt('지난 밤 · {0}', t(loopMarkers[lastMoment.id][1]))
+    : fmt('지난 밤 {0} · {1}', time(lastMoment.minute), t(loopMarkers[lastMoment.id][1]));
 }
 
 function renderBroadcast() {
@@ -1615,8 +1664,11 @@ function renderBroadcast() {
   $('broadcast').dataset.live = String(onAir);
   $('broadcast').dataset.linked = String(r.consoleReady);
   $('broadcast-state').textContent = t(onAir ? '송출 완료' : r.consoleReady ? '두 채널 연결됨' : '송출 대기');
-  $('sync-cue').hidden = !routing || hasRadioExchange();
-  $('sync-cue').textContent = t('23:57 · 원본 전달 완료 · 건너편 교신 연결');
+  const lateReply = r.console === 'signal' && r.syncMissed;
+  $('sync-cue').hidden = r.phase !== 'play' || (!isDual && !lateReply);
+  $('sync-cue').textContent = t(lateReply ? '이쪽 자정에 보조 회선이 닫힙니다.'
+    : r.consoleReady ? '순임의 순서 확보 · 마이크를 열면 두 항구에 송출'
+      : '23:57 마감 · 지금 순임의 방송 자리를 확정');
   const channels = {
     voices: [['순임의 인터뷰', r.tape ? '테이프 장착' : '테이프 대기']],
     signal: [['건너편 윤서', '교신 연결'], ['내 마이크', '마이크 대기']],
@@ -1714,10 +1766,10 @@ function renderReadiness() {
 
 function turningPoint() {
   const r = game.run;
-  if (r.ending === 'both') return [LIMIT, '원본과 건너편 목소리가 모두 방송되었습니다.'];
+  if (r.ending === 'both') return [r.onAirAt, '원본과 건너편 목소리가 모두 방송되었습니다.'];
   if (r.syncMissed) return [REPLY_WINDOW, '원본 전달과 교신이 겹친 순간에 윤서에게 신호를 보내지 못했습니다.'];
-  if (r.ending === 'signal') return [REPLY_WINDOW, '23:57에 열린 건너편 호출에 응답했습니다.'];
-  if (r.ending === 'voices') return [LIMIT, '주민 인터뷰는 전했지만 건너편 호출에는 응답하지 못했습니다.'];
+  if (r.ending === 'signal') return [r.onAirAt, '23:57에 열린 건너편 호출에 응답했습니다.'];
+  if (r.ending === 'voices') return [r.onAirAt, '주민 인터뷰는 전했지만 건너편 호출에는 응답하지 못했습니다.'];
   if (r.tuneAt && !r.linked && r.elapsed >= r.tuneAt) return [r.tuneAt, '예약한 시각에 건너편 채널이 닫혀 있었습니다.'];
   if (!r.tape && r.elapsed >= CART_LEAVES) return [CART_LEAVES, '23:57에 수레가 떠나 원본을 확보하지 못했습니다.'];
   if (r.phase === 'expired') return [LIMIT, '자정까지 준비한 방송을 송출하지 못했습니다.'];
@@ -1773,6 +1825,12 @@ function renderRecap() {
   $('recap-mystery').setAttribute('aria-haspopup', String(knows('remoteSlot') ? 'dialog' : 'false'));
   $('recap-followups').hidden = ['recap-mystery', 'recap-epilogue', 'recap-pier'].every((id) => $(id).hidden);
   const [minute, reason] = turningPoint();
+  const ending = r.phase === 'ending';
+  $('recap-times').hidden = !ending;
+  $('recap-times').textContent = ending
+    ? [r.ending === 'both' ? fmt('{0} 교신 확정', time(REPLY_WINDOW)) : '',
+      fmt('{0} 송출 시작', time(r.onAirAt)), fmt('{0} 수신 확인', time(receiptAt(r))), fmt('{0} 송신 종료', time(LIMIT))]
+      .filter(Boolean).join(' · ') : '';
   $('turning-time').textContent = time(minute);
   $('missed').textContent = t(reason);
   const row = ({ minute, text, kind, args = [] }) => {
@@ -1791,7 +1849,7 @@ function renderRecap() {
 
 function renderTimeline() {
   const r = game.run;
-  const minuteShown = transmission ? r.onAirAt : r.elapsed;
+  const minuteShown = transmission ? transmissionMinute() : r.elapsed;
   const entries = [
     [0, '마지막 방송 준비'],
     [CART_ARRIVES, knows('bell') ? '현관 종 두 번 · 수레 도착' : '현관에서 어떤 소리가 날까?'],
@@ -1813,7 +1871,9 @@ function renderTimeline() {
   const rows = (moments) => moments.map(({ id, minute }) => {
     const row = element('li');
     row.dataset.marker = id;
-    row.append(element('time', time(minute)), element('span', loopMarkers[id][1]));
+    if (minute === LIMIT && Object.hasOwn(endings, id)) row.append(element('span', '결말 기록'));
+    else row.append(element('time', time(minute)));
+    row.append(element('span', loopMarkers[id][1]));
     return row;
   });
   $('timeline-past').replaceChildren(...rows(previous.moments));
@@ -1940,13 +2000,20 @@ function renderActions(options) {
   const showLate = r.phase === 'play' && r.syncMissed && !r.review && !r.console;
   const lateAlt = showLate && available('go-reply') ? available('voices') : null;
   const lateRewind = { title: '다음 회차 준비하기', cost: '시간 유지', run: reviewNight };
+  const planned = r.phase === 'play' && !r.review && !r.console && !openingAction ? connectionRoute() : null;
+  const postponed = planned && !planned.feasible ? available('prepare-rewind') : null;
+  const scout = postponed && r.room === 'archive' && !knows('airlog') ? available('read-airlog') : null;
+  $('route-deadline').hidden = !postponed;
+  $('route-deadline').textContent = postponed ? fmt('23:57까지 {0}행동. 현재 위치에서 준비에 {1}행동이 필요합니다.',
+    Math.max(0, REPLY_WINDOW - r.elapsed), planned.needed) : '';
+  $('route-alternative').hidden = !scout;
+  $('route-alternative').replaceChildren(...(scout ? [actionButton(postponed)] : []));
   if (r.phase === 'play' && !r.review && !r.console && !openingAction) {
-    const planned = connectionRoute();
     if (showLate) featured = available('signal') || available('go-reply') || available('voices') || lateRewind;
     else if (hasLiveCall()) featured = available('both') || available('signal') || available('voices');
     else if (r.intent === 'mystery') featured = available('review-mystery') || available('hear-reply-roof') || available('read-airlog');
     else if (available('recheck-clock')) featured = (r.room === 'archive' && !knows('airlog') && available('read-airlog')) || available('recheck-clock');
-    else if (planned && !planned.feasible) featured = available('prepare-rewind');
+    else if (postponed) featured = scout || postponed;
     else if (planned?.next) featured = available(planned.next.id);
     if (!featured && r.room === 'hall') featured = r.elapsed < CART_ARRIVES
       ? available('read-sheet') || available('wait') : available('carry-to-studio') || available('search-cart');
@@ -1962,7 +2029,7 @@ function renderActions(options) {
   featuredSlot.hidden = !featured;
   featuredSlot.replaceChildren(...(featured ? [actionButton({ ...featured, primary: true })] : []));
   const rest = options.filter((option) => option !== featured && (!option.id || option.id !== openingAction?.id) && option !== consoleCommand
-    && option !== lateAlt && !recapOptions.includes(option));
+    && option !== lateAlt && !(scout && option === postponed) && !recapOptions.includes(option));
   $('actions').hidden = !rest.length;
   $('actions').replaceChildren(...rest.map((option) => actionButton({ ...option, primary: featured ? false : option.primary })));
 }
@@ -1971,8 +2038,8 @@ function render() {
   const r = game.run;
   const left = LIMIT - r.elapsed;
   $('objective').textContent = t(transmission ? '한려 FM의 마지막 방송' : objective());
-  $('clock').textContent = time(transmission ? r.onAirAt : r.elapsed);
-  $('budget').textContent = transmission ? t('송출 중') : fmt('남은 행동 {0}회', left);
+  $('clock').textContent = time(r.elapsed);
+  $('budget').textContent = fmt('남은 행동 {0}회', left);
   document.querySelector('.hud').dataset.urgent = String(left <= 2 && r.phase === 'play');
   $('beats').replaceChildren(...Array.from({ length: LIMIT }, (_, index) => element('span', '', index < left ? 'on' : '')));
   $('cycle').textContent = fmt('{0}회차', game.loop);
@@ -2159,16 +2226,19 @@ function renderBroadcastMystery() {
   $('mystery-evidence').replaceChildren(...found.map((id) => {
     const item = element('li');
     item.append(element('strong', clues[id].title), element('p', clues[id].fact));
-    if (clues[id].clip) item.append(listenButton(clues[id].clip, '건너편 호출 듣기'));
+    if (clues[id].clip) {
+      const clip = id === 'remoteRequest' && game.run.handoffCall ? callFor(game.run).clip : clues[id].clip;
+      item.append(listenButton(clip, '건너편 호출 듣기'));
+    }
     return item;
   }));
   const ready = found.length === mysteryEvidence.length;
   $('mystery-prompt').hidden = game.storySolved;
-  $('mystery-prompt').textContent = t(ready ? '두 단서를 연결해 보세요. 건너편 윤서는 왜 원본을 찾았을까요?'
-    : knows('remoteSlot') ? '아직 비교할 기록이 하나 부족합니다. 23:57에 열리는 교신을 확인해 보세요.'
-      : '아직 비교할 기록이 하나 부족합니다. 자료실에서 건너편 방송 일지를 찾아보세요.');
+  $('mystery-prompt').textContent = t(ready ? '편성표, 인계 기록, 무전을 대조해 보세요. 건너편 윤서는 왜 원본을 찾았을까요?'
+    : knows('remoteSlot') ? '23:57의 교신을 듣고, 받은 사람 칸이 비어 있는 이유를 생각해 보세요.'
+      : '자료실에서 건너편의 편성표와 원본 인계 기록을 찾아보세요.');
   $('mystery-feedback').textContent = game.storySolved
-    ? t('두 단서를 연결했습니다. 건너편 윤서는 순임의 방송을 부탁하려 했습니다. 이제 교신에 답하면 윤서의 마지막 응답이 달라집니다.') : '';
+    ? t('편성표, 인계 기록, 무전이 일치합니다. 건너편에는 순임의 원본이 도착하지 않았습니다. 교신에 답하면 윤서의 마지막 응답이 달라집니다.') : '';
   $('mystery-answers').replaceChildren(...(ready && !game.storySolved ? mysteryAnswers.map(([id, label, feedback]) => {
     const button = element('button', label, 'utility');
     button.type = 'button';
@@ -2693,7 +2763,7 @@ window.addEventListener('pagehide', pausePrologue);
 window.addEventListener('pageshow', resumePrologue);
 $('rewind').addEventListener('click', reviewNight);
 $('exchange-replay').addEventListener('click', replayExchange);
-$('solo-replay').addEventListener('click', () => playClip('callWithQuestion'));
+$('solo-replay').addEventListener('click', () => playClip(callFor(game.run).clip));
 $('routing-panel').addEventListener('change', chooseRoute);
 $('hint-toggle').addEventListener('click', () => {
   if (!hintState.topic) return;
@@ -2757,7 +2827,7 @@ $('sound').addEventListener('click', () => {
   if (!game.sound) stopSceneAudio();
   else if (transmission) playTransmissionVoice();
   else if (openingReceiverHere() && game.run.receiverTuned) listenToBand();
-  else if (openingReceiverHere() && !speaking) playClip('openingEcho');
+  else if (openingReceiverHere() && !speaking) playClip(game.loop === 1 ? 'opening' : 'openingEcho');
   else playSceneVoice();
 });
 

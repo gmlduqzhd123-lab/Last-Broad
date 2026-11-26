@@ -96,6 +96,8 @@ h1 em { color: var(--accent); font-style: normal; }
 .featured-action { margin-bottom: 9px; }
 .featured-action .action:disabled { opacity: .56; }
 .late-contact { margin-bottom: 7px; padding: 6px 8px; border-inline-start: 3px solid var(--accent); border-radius: 5px; background: #36291f; color: #ffe1b5; font-size: .86rem; line-height: 1.4; }
+.route-deadline { margin-bottom: 6px; color: #ffe1b5; font-size: .88rem; }
+.recap-times { margin-block: 6px; color: var(--signal); font: .86rem/1.4 var(--mono); }
 .late-contact-actions { display: grid; gap: 5px; margin-bottom: 8px; }
 .late-contact-actions .action { min-height: 44px; }
 .opening-guidance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .65fr); align-items: center; gap: 10px; padding: 9px 13px; border-bottom: 1px solid #5d4936; background: #30271f; color: #ffe1b5; }
@@ -498,8 +500,12 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
   min-height: 48px; margin-top: 7px; padding: 6px 7px; border: 1px solid #456259; border-radius: 6px;
   background: #111f1d; color: var(--signal); font-size: .89rem; line-height: 1.38;
 }
-#receiver-lock { color: var(--signal); font-size: .81rem; }
+#receiver-lock, .opening-exchange strong { color: var(--signal); font-size: .81rem; }
 #receiver-caption { margin-top: 2px; }
+#receiver[data-tuned="false"] .receiver-screen { display: block; }
+#receiver[data-tuned="false"] .signal-bars { display: none; }
+.opening-exchange { margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #456259; }
+.opening-exchange p { margin-top: 2px; }
 .receiver[data-locked="true"] .receiver-screen { border-color: #c3915b; color: #ffe0a9; }
 .receiver-handoff { position: fixed; z-index: 20; object-fit: cover; pointer-events: none; }
 @media (max-width: 680px) {
@@ -515,6 +521,8 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
   html[lang="en"] .scene[data-intro="true"] .scene-state { max-width: none; }
   .entry-brief { padding-block: 5px; line-height: 1.35; }
   .receiver-screen { grid-template-columns: 25px minmax(0, 1fr); gap: 5px; padding-block: 4px; font-size: .85rem; }
+  #receiver[data-tuned="false"] .receiver-screen { font-size: .82rem; line-height: 1.27; }
+  #receiver[data-tuned="false"] .opening-exchange p, #receiver[data-tuned="false"] #receiver-caption { margin-top: 0; }
 }
 .signal-bars { display: flex; justify-content: center; align-items: center; gap: 3px; height: 28px; color: inherit; }
 .signal-bars i { width: 3px; height: var(--level); border-radius: 2px; background: currentColor; }
@@ -532,6 +540,8 @@ dialog > .panel-heading { position: sticky; top: 0; z-index: 2; padding: 4px 0; 
 .on-air { border: 1px solid #fa897d; border-radius: 4px; padding: 3px 7px; background: #701e21; color: #fff3eb; font: 700 .8rem var(--mono); white-space: nowrap; }
 .reel { display: block; flex: 0 0 21px; height: 21px; border: 2px solid; border-radius: 100%; background: repeating-conic-gradient(transparent 0deg 75deg, currentColor 78deg 105deg, transparent 108deg 120deg); }
 #transmission-caption { min-height: 3.3em; padding: 8px 2px; white-space: pre-line; color: var(--paper); }
+#transmission-clocks { margin: -3px 2px 8px; color: var(--signal); font: .8rem var(--mono); }
+.transmission[data-recall="true"] .on-air { visibility: hidden; }
 @media (prefers-reduced-motion: no-preference) {
   .transmission .signal-bars i { animation: meter-wave .68s alternate infinite; }
   .transmission .signal-bars i:nth-child(even) { animation-delay: -.3s; }
