@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=6">
-  <script defer src="./school-copy.js?v=6"></script>
-  <script defer src="./school.js?v=6"></script>
+  <link rel="stylesheet" href="./school.css?v=7">
+  <script defer src="./school-copy.js?v=7"></script>
+  <script defer src="./school.js?v=7"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -115,7 +115,8 @@
         </section>
 
         <section class="choices" id="choices" aria-label="행동">
-          <div class="action-heading"><h2 data-t="actions">지금 할 일</h2><button class="utility small" id="review" type="button" data-t="review" hidden>회차 기록</button></div>
+          <div class="action-heading"><h2 id="choices-heading">지금 할 일</h2><button class="utility small" id="review" type="button" data-t="review" hidden>회차 기록</button></div>
+          <p id="backup-deadline-note" data-t="finalBackupNote" hidden>남은 행동 1회. 지금 방송해야 두 교실이 새 문제를 풀 수 있어요.</p>
           <div class="actions" id="actions"></div>
         </section>
 
@@ -129,6 +130,10 @@
           <ul class="hold-receipts" id="hold-receipts" hidden>
             <li data-t="holdBlueReceipt">파랑 교실 · 안내 수신</li>
             <li data-t="holdYellowReceipt">노랑 교실 · 안내 수신</li>
+          </ul>
+          <ul class="winner-reactions" id="winner-reactions" hidden>
+            <li id="winner-room"><strong id="winner-room-title"></strong><p id="winner-room-line"></p></li>
+            <li id="other-room"><strong id="other-room-title"></strong><p id="other-room-line"></p></li>
           </ul>
           <p id="ending-story"></p>
           <p class="ending-next" id="ending-next"></p>
@@ -177,7 +182,7 @@
             <p class="clue-transcript" id="practice-sample-caption" hidden></p>
           </div>
           <div class="recording-sample" id="leak-sample" hidden>
-            <button class="utility" id="leak-listen" type="button" data-t="leakSample">12:36 교실 방송 녹음 듣기</button>
+            <button class="utility" id="leak-listen" type="button">12:36 교실 방송 녹음 듣기</button>
             <p class="clue-transcript" id="leak-sample-caption" hidden></p>
           </div>
         </div>
@@ -186,7 +191,7 @@
         <button type="button" class="utility" id="compare" data-t="compare">두 녹음 대조</button>
         <p id="compare-feedback" role="status"></p>
         <div class="source-choice" id="source-choice" hidden>
-          <p data-t="sourcePrompt">12:36에 어느 쪽에서 정답이 나왔나요?</p>
+          <p id="source-prompt">이대로라면 12:36에 어느 쪽에서 정답이 나갈까요?</p>
           <button class="utility" type="button" data-source="mic" data-t="mic" aria-pressed="false">마이크</button>
           <button class="utility" type="button" data-source="file" data-t="queuedSource" aria-pressed="false">예약 음원</button>
           <button type="button" class="primary" id="connect" data-t="connect">12:36 재생표와 연결</button>
@@ -200,6 +205,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v6.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v7.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
