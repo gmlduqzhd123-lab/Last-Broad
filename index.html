@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=3">
-  <script defer src="./school-copy.js?v=3"></script>
-  <script defer src="./school.js?v=3"></script>
+  <link rel="stylesheet" href="./school.css?v=4">
+  <script defer src="./school-copy.js?v=4"></script>
+  <script defer src="./school.js?v=4"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -86,23 +86,30 @@
         <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" hidden>사고 구간 수첩에 담기</button>
       </section>
 
-      <section class="choices" id="choices" aria-label="행동">
-        <div class="action-heading"><h2 data-t="actions">지금 할 일</h2><button class="utility small" id="review" type="button" data-t="review" hidden>회차 기록</button></div>
-        <div class="actions" id="actions"></div>
-      </section>
+      <div class="play-step">
+        <section class="answer-cards" id="answer-cards" aria-labelledby="answers-title" hidden>
+          <h2 id="answers-title" data-t="answersTitle">두 교실의 답안 카드</h2>
+          <ul id="answer-list"></ul>
+        </section>
 
-      <section class="ending" id="ending" hidden aria-labelledby="ending-title">
-        <div class="ending-meta"><span id="ending-category"></span><span id="ending-count"></span></div>
-        <h2 id="ending-title" tabindex="-1"></h2>
-        <p id="ending-caption" role="status"></p>
-        <p id="ending-story"></p>
-        <p class="ending-next" id="ending-next"></p>
-        <div class="end-actions">
-          <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
-          <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
-          <button class="utility" id="ending-skip" type="button" data-t="endingSkip" hidden>결과 바로 보기</button>
-        </div>
-      </section>
+        <section class="choices" id="choices" aria-label="행동">
+          <div class="action-heading"><h2 data-t="actions">지금 할 일</h2><button class="utility small" id="review" type="button" data-t="review" hidden>회차 기록</button></div>
+          <div class="actions" id="actions"></div>
+        </section>
+
+        <section class="ending" id="ending" hidden aria-labelledby="ending-title">
+          <div class="ending-meta"><span id="ending-category"></span><span id="ending-count"></span></div>
+          <h2 id="ending-title" tabindex="-1"></h2>
+          <p id="ending-caption" role="status"></p>
+          <p id="ending-story"></p>
+          <p class="ending-next" id="ending-next"></p>
+          <div class="end-actions">
+            <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
+            <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
+            <button class="utility" id="ending-skip" type="button" data-t="endingSkip" hidden>결과 바로 보기</button>
+          </div>
+        </section>
+      </div>
 
       <details class="history" id="history" hidden>
         <summary data-t="history">이번 회차 기록</summary>
@@ -152,6 +159,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v3.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v4.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
