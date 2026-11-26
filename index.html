@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=5">
-  <script defer src="./school-copy.js?v=5"></script>
-  <script defer src="./school.js?v=5"></script>
+  <link rel="stylesheet" href="./school.css?v=6">
+  <script defer src="./school-copy.js?v=6"></script>
+  <script defer src="./school.js?v=6"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -48,6 +48,7 @@
       <div class="mission">
         <div class="hud-meta"><span id="loop"></span><span id="memory" hidden></span></div>
         <h2 id="mission" tabindex="-1"></h2>
+        <p id="rewind-hint" data-t="rewindBackupHint" hidden>12:36에 지우에게 방송을 맡기고 바로 선생님에게 가세요.</p>
       </div>
       <div class="clock-face">
         <time id="clock" aria-label="방송 시각">12:32</time>
@@ -59,7 +60,11 @@
     <div class="play-grid">
       <section class="scene" id="scene" aria-labelledby="game-title">
         <div class="scene-inner">
-          <div class="scene-meta"><p id="place"></p><p id="scoreboard"></p></div>
+          <div class="scene-meta">
+            <p id="place"></p>
+            <p class="public-score"><span data-t="publicScoreLabel">공개 점수</span> <strong id="scoreboard"></strong></p>
+          </div>
+          <p id="public-score-pending" data-t="publicPending" hidden>교실 점수판 · 발표 대기</p>
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
         </div>
@@ -84,15 +89,29 @@
         <p class="monitor-caption" id="monitor-caption" role="status" hidden></p>
         <p class="monitor-origin" id="monitor-origin" hidden></p>
         <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" hidden>사고 구간 수첩에 담기</button>
+        <button class="utility excerpt" id="replay-incident" type="button" data-t="previewLeak" hidden>12:36 정답 유출 다시 듣기</button>
+        <button class="utility excerpt" id="incident-compare" type="button" data-t="incidentCompare" hidden>수첩에서 연습 원본과 비교</button>
       </section>
 
       <div class="play-step">
+        <section id="classrooms" class="classrooms" aria-labelledby="classrooms-title" hidden>
+          <h2 id="classrooms-title" data-t="classroomTitle">두 교실의 답안 상황</h2>
+          <ul class="classroom-list">
+            <li id="blue-classroom"><span data-t="classroomBlue">파랑 교실</span><strong id="blue-classroom-status"></strong></li>
+            <li id="yellow-classroom"><span data-t="classroomYellow">노랑 교실</span><strong id="yellow-classroom-status"></strong></li>
+          </ul>
+          <p id="classrooms-line" role="status"></p>
+        </section>
         <section class="answer-cards" id="answer-cards" aria-labelledby="answers-title" hidden>
           <h2 id="answers-title" data-t="answersTitle">두 교실의 답안 카드</h2>
           <p id="grade-question" hidden></p>
           <p id="grade-prompt" hidden></p>
           <ul id="answer-list"></ul>
           <p id="grade-feedback" role="status" hidden></p>
+          <dl id="score-slip" class="score-slip" hidden>
+            <dt data-t="privateScoreLabel">진행자만 보는 채점 점수</dt><dd id="private-score"></dd>
+            <dt data-t="publicPending">교실 점수판 · 발표 대기</dt><dd id="pending-public-score"></dd>
+          </dl>
         </section>
 
         <section class="choices" id="choices" aria-label="행동">
@@ -114,6 +133,7 @@
           <p id="ending-story"></p>
           <p class="ending-next" id="ending-next"></p>
           <div class="end-actions" id="ending-actions">
+            <button class="primary" id="backup-announce" type="button" data-t="announce" hidden>결승 결과 발표하기</button>
             <button class="primary" id="rewind" type="button" data-t="rewind">12:32로 되감기</button>
             <button class="utility" id="end-replay" type="button" data-t="replayEnding">결말 음성 듣기</button>
             <button class="utility" id="ending-skip" type="button" data-t="endingSkip" hidden>결과 바로 보기</button>
@@ -149,8 +169,19 @@
     <div class="dialog-body">
       <ol id="journal-clues" class="clues"></ol>
       <section id="compare-area" class="compare" aria-labelledby="compare-title">
-        <h3 id="compare-title" data-t="compareTitle">녹음 두 개를 대조하기</h3>
+        <h3 id="compare-title" data-t="compareTitle" tabindex="-1">녹음 두 개를 대조하기</h3>
         <p data-t="comparePrompt">마지막 소리가 같은 녹음 두 개를 고르세요.</p>
+        <div id="recording-pair" class="recording-pair" hidden>
+          <div class="recording-sample" id="practice-sample" hidden>
+            <button class="utility" id="practice-listen" type="button" data-t="practiceSample">08:41 방송실 연습 원본 듣기</button>
+            <p class="clue-transcript" id="practice-sample-caption" hidden></p>
+          </div>
+          <div class="recording-sample" id="leak-sample" hidden>
+            <button class="utility" id="leak-listen" type="button" data-t="leakSample">12:36 교실 방송 녹음 듣기</button>
+            <p class="clue-transcript" id="leak-sample-caption" hidden></p>
+          </div>
+        </div>
+        <p id="recording-missing" data-t="recordingMissing" hidden>방송실에서 아침 연습 원본을 찾으면 두 소리를 비교할 수 있어요.</p>
         <div class="compare-options" id="compare-options"></div>
         <button type="button" class="utility" id="compare" data-t="compare">두 녹음 대조</button>
         <p id="compare-feedback" role="status"></p>
@@ -169,6 +200,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v5.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v6.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>

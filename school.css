@@ -66,7 +66,10 @@ body[data-urgent="true"] #clock { color: var(--red); }
 .scene-inner { width: 100%; padding: 18px 20px; }
 .scene-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
 #place { color: var(--mint); font-size: .82rem; font-weight: 680; }
+.public-score { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.public-score span { color: var(--muted); font-size: .75rem; }
 #scoreboard { flex: 0 0 auto; color: var(--gold); font: 700 .8rem/1.3 var(--mono); }
+#public-score-pending, #rewind-hint { margin-top: 3px; color: var(--gold); font-size: .82rem; line-height: 1.35; }
 #game-title { font-size: clamp(1.6rem, 4vw, 3rem); line-height: 1.1; letter-spacing: -.064em; margin-block: 5px 8px; }
 #scene-line { max-width: 60ch; color: #f1eade; }
 .console { grid-area: console; padding: 16px; border: 1px solid #506169; border-radius: 12px; background: linear-gradient(153deg, #26363e, #1a272f 62%); box-shadow: inset 0 1px 0 #ffffff12, 0 12px 35px #080d152e; }
@@ -93,8 +96,19 @@ body[data-incident="true"] .cue { color: var(--red); }
 .monitor-origin { color: var(--gold); margin-top: 6px; padding-inline: 7px; font-size: .82rem; }
 .excerpt { width: 100%; margin-top: 6px; color: var(--gold); text-align: left; font-weight: 680; }
 .play-step { grid-area: choices; display: grid; gap: 8px; min-width: 0; }
-.answer-cards { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
-.answer-cards h2 { margin: 0 0 6px; font-size: .96rem; }
+.answer-cards, .classrooms { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+.answer-cards h2, .classrooms h2 { margin: 0 0 6px; font-size: .96rem; }
+.classroom-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; list-style: none; margin: 0; padding: 0; }
+.classroom-list li { display: grid; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--deep); font-size: .86rem; }
+.classroom-list li[data-state="accepted"] { border-color: #6c9c8d; }
+.classroom-list li[data-state="accepted"] strong { color: var(--mint); }
+#blue-classroom span { color: #a6d8f5; }
+#yellow-classroom span { color: var(--gold); }
+#classrooms-line { margin-top: 6px; color: var(--muted); font-size: .87rem; }
+.score-slip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; margin: 8px 0 0; padding: 6px 8px; border-inline-start: 2px solid var(--gold); background: var(--deep); font-size: .82rem; }
+.score-slip dd { margin: 0; font-weight: 700; }
+#private-score { color: var(--gold); }
+#pending-public-score { color: var(--muted); }
 #grade-question { color: var(--paper); font-size: .9rem; }
 #grade-prompt { margin: 3px 0 7px; color: var(--gold); font-size: .8rem; }
 #grade-feedback:not(:empty) { margin-top: 7px; color: var(--gold); font-size: .83rem; }
@@ -167,6 +181,9 @@ dialog::backdrop { background: #080e17bb; }
 .source-choice { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .source-choice p { flex: 0 0 100%; font-size: .87rem; }
 .source-choice [aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.recording-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 6px; margin-block: 8px; }
+.recording-sample button { width: 100%; text-align: start; color: var(--mint); }
+#recording-missing { margin-bottom: 6px; color: var(--gold); }
 @media (max-width: 700px) {
   .shell { width: min(520px, calc(100% - 22px)); }
   .topbar-inner { min-height: 57px; }
@@ -189,7 +206,7 @@ dialog::backdrop { background: #080e17bb; }
   .action-detail { font-size: .76rem; }
   body[data-urgent="true"] .scene { min-height: 92px; }
   body[data-urgent="true"] #game-title { font-size: 1.15rem; }
-  body:is([data-ended="true"], [data-answering="true"]) .play-grid { grid-template-areas: "scene" "choices" "console" "history"; }
+  body:is([data-ended="true"], [data-answering="true"], [data-classrooms="true"]) .play-grid { grid-template-areas: "scene" "choices" "console" "history"; }
   .action-heading { min-height: 25px; padding: 0 0 3px; }
   .action-heading .small { min-height: 44px; }
 }
