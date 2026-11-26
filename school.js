@@ -284,7 +284,13 @@ function endingFor(run) {
   const ending = explained ? { ...basic, ...explained } : basic;
   if (run.outcome !== 'held') return ending;
   if (missedBackupAirtime(run)) return { ...ending, story: 'endHeldMissedAirtime', next: 'rewindAirtimeHint' };
-  return !explained && !run.leakMicOff ? { ...ending, story: 'endHeldOther' } : ending;
+  const missedDeparture = run.log.some((entry) => entry.text === 'logBackupClosed');
+  return {
+    ...ending,
+    decision: missedDeparture ? 'endHeldMissedDeparture' : 'endHeldByChoice',
+    story: !explained && !run.leakMicOff ? 'endHeldOther' : ending.story,
+    next: missedDeparture ? 'rewindBackupHint' : ending.next,
+  };
 }
 
 function replayEnding(run, explicit = false) {
@@ -549,10 +555,9 @@ function rewind() {
   if (endingScene) return;
   const r = game.run;
   const broadcasts = ['logClean', 'logBackup', 'logLeakOff', 'logLeakOn', 'logQuestionStarted'];
-  const lastSlot = missedBackupAirtime(r) ? 'logBackupAirtimeMissed' : lastBackupChance(r) ? 'logBackupVoluntaryRewind' : '';
-  const backupRecap = lastSlot
-    ? { minute: LIMIT - 1, text: lastSlot }
-    : r.log.findLast((entry) => entry.text === 'logBackupClosed');
+  const backupRecap = missedBackupAirtime(r) ? { minute: LIMIT - 1, text: 'logBackupAirtimeMissed' }
+    : r.backup && !r.outcome ? { minute: r.elapsed, text: r.returned ? 'logBackupVoluntaryRewind' : 'logBackupEnvelopeRewind' }
+      : r.log.findLast((entry) => entry.text === 'logBackupClosed');
   const moment = backupRecap
     ?? r.log.findLast((entry) => broadcasts.includes(entry.text))
     ?? r.log.findLast((entry) => entry.text === 'logProof');
@@ -574,10 +579,12 @@ function rewind() {
   $('mission').focus({ preventScroll: true });
 }
 
+const retryEnvelopeAirtime = () => ['logBackupAirtimeMissed', 'logBackupVoluntaryRewind', 'logBackupEnvelopeRewind'].includes(game.previous?.text);
+const openingTurn = () => game.loop === 1 && game.run.elapsed === 0 && !game.run.outcome;
+
 function recommendedGoal() {
   if (game.loop < 2) return '';
-  if (['logBackupClosed', 'logBackupAirtimeMissed', 'logBackupVoluntaryRewind'].includes(game.previous?.text)
-    && !game.unlocked.includes('backup')) return 'backup';
+  if (retryEnvelopeAirtime() || (game.previous?.text === 'logBackupClosed' && !game.unlocked.includes('backup'))) return 'backup';
   return Object.keys(LOOP_GOALS).find((goal) => !game.unlocked.includes(goal)) ?? '';
 }
 
@@ -599,7 +606,7 @@ function mission() {
   if (r.questionDelivered && !r.classroomAnswersReady && !r.answersClosed) return 'classroomTitle';
   if (r.elapsed >= CUE_TIME) return 'missionClean';
   if (r.queued) return 'missionClean';
-  if (activeGoal() === 'backup') return 'missionGoalBackup';
+  if (activeGoal() === 'backup') return retryEnvelopeAirtime() ? 'missionOpenEnvelope' : 'missionGoalBackup';
   if (activeGoal() === 'held') return 'missionGoalHeld';
   if (known('proof')) return 'missionFix';
   if (known('practice') && known('schedule')) return 'missionCompare';
@@ -693,7 +700,10 @@ function actionChoices() {
       briefJiu(run);
       run.queued = true;
     }));
-    if (r.mic) offer('mute', 'muteDetail', () => step('micMessage', (run) => { run.mic = false; learn('mic'); }));
+    if (r.mic) {
+      const detail = r.elapsed === CUE_TIME - 1 ? 'muteDeadlineDetail' : 'muteDetail';
+      offer('mute', detail, () => step('micMessage', (run) => { run.mic = false; learn('mic'); }));
+    }
     if (!known('schedule')) offer('schedule', 'scheduleDetail', () => step('scheduleMessage', learnSchedule));
     if (!known('practice')) offer('practice', 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
     if (!known('proof') && known('practice') && known('schedule')) {
@@ -725,6 +735,8 @@ function actionChoices() {
 function renderChoices() {
   const r = game.run;
   const lastChance = lastBackupChance(r);
+  const openingAction = $('opening-action');
+  openingAction?.replaceChildren();
   $('choices').hidden = Boolean(r.outcome || gradingQuiz() || (r.questionDelivered && !r.classroomAnswersReady));
   text('choices-heading', lastChance ? 'finalBackupTitle' : 'actions');
   $('backup-deadline-note').hidden = !lastChance;
@@ -744,11 +756,15 @@ function renderChoices() {
     button.dataset.primary = String(index === 0);
     const title = node('span', '', 'action-top');
     title.append(node('strong', t(label)), node('small', t(free ? 'noCost' : 'one')));
-    const warning = detail === 'handoffClueCost' || detail === 'finalClueCost';
+    const warning = ['handoffClueCost', 'finalClueCost', 'muteDeadlineDetail'].includes(detail);
     button.append(title, node('span', t(detail), warning ? 'action-detail action-warning' : 'action-detail'));
     button.addEventListener('click', run);
     return button;
   }));
+  if (openingTurn() && openingAction) {
+    const mute = $('actions').querySelector('[data-action="mute"]');
+    if (mute) openingAction.append(mute);
+  }
 }
 
 function monitorInfo() {
@@ -932,6 +948,8 @@ function renderScene(live = liveEndingView()) {
       : r.leaked && r.elapsed === CUE_TIME && incidentOpening ? (r.leakMicOff ? 'leakOpeningOff' : 'leakOpeningOn')
       : leadIn && waiting ? leadIn.caption
       : r.message || (game.loop > 1 ? 'remembered' : 'present'));
+  const showStudent = !r.outcome && r.leaked && r.assigned && r.elapsed === CUE_TIME + 1;
+  $('handoff-student')?.toggleAttribute('hidden', !showStudent);
   $('pre-broadcast-line').hidden = !leadIn || waiting || r.message === 'teacherEnvelopeReply';
   if (!$('pre-broadcast-line').hidden) text('pre-broadcast-line', leadIn.caption);
   const onAir = !standbyLabel && (Boolean(live && !published) || r.handoffPending || (!r.outcome && !r.assigned));
@@ -958,9 +976,9 @@ function renderScene(live = liveEndingView()) {
       : lastBackupChance(r) ? 'finalBackupTitle' : missedBackup(r) ? 'lateTight' : r.assigned ? 'cueHeld'
         : r.leaked ? r.leakMicOff ? 'cueOff' : 'cueOn'
           : r.queued ? r.swapBriefPending ? 'cueSwapped' : pendingQuestion ? 'questionDeliveryCue' : r.elapsed >= CUE_TIME ? 'questionDeliveredCue' : 'cueSwapped' : 'cuePending'), clock(r.elapsed));
-  const openingRecord = game.loop === 1 && r.elapsed === 0 && !r.outcome;
+  const openingRecord = openingTurn();
   $('opening-record').hidden = !openingRecord;
-  const monitorSlot = $(openingRecord ? 'opening-record' : 'console-monitor');
+  const monitorSlot = openingRecord ? $('opening-monitor') ?? $('opening-record') : $('console-monitor');
   if ($('monitor-controls').parentElement !== monitorSlot) monitorSlot.append($('monitor-controls'));
   text('monitor-label', openingRecord ? 'openingRecordListen' : monitorInfo()[0]);
   if (openingRecord) $('monitor').setAttribute('aria-describedby', 'opening-record-copy');
@@ -997,13 +1015,14 @@ function renderGoals() {
   const goal = run.goal || recommended;
   for (const button of $('loop-goals').querySelectorAll('[data-goal]')) {
     const id = button.dataset.goal;
-    text(button.id, LOOP_GOALS[id].label);
+    text(button.id, id === 'backup' && retryEnvelopeAirtime() ? 'goalOpenEnvelope' : LOOP_GOALS[id].label);
     button.setAttribute('aria-pressed', String(run.goal === id));
     button.dataset.suggested = String(!run.goal && recommended === id);
   }
-  text('goal-tip', goal ? LOOP_GOALS[goal].tip : 'goalAllTip');
+  const openingEnvelope = goal === 'backup' && retryEnvelopeAirtime();
+  text('goal-tip', openingEnvelope ? 'goalOpenEnvelopeTip' : goal ? LOOP_GOALS[goal].tip : 'goalAllTip');
   $('goal-recommended').hidden = Boolean(run.goal || !recommended);
-  if (recommended) text('goal-recommended', 'goalRecommended', t(LOOP_GOALS[recommended].label));
+  if (recommended) text('goal-recommended', 'goalRecommended', $('goal-' + recommended).textContent);
 }
 
 function renderAnnouncementCheck() {
@@ -1042,6 +1061,8 @@ function renderEnding(live) {
   $('ending-standby').hidden = !live?.standby;
   $('hold-receipts').hidden = r.outcome !== 'held' || endingScene?.beat === 'notice';
   $('hold-dialogue').hidden = r.outcome !== 'held' || Boolean(live);
+  const decision = $('hold-decision');
+  if (decision) decision.hidden = true;
   const reactions = WINNER_REACTIONS[r.outcome];
   $('winner-reactions').hidden = !reactions || Boolean(live && !live.published);
   if (reactions && !$('winner-reactions').hidden) {
@@ -1062,6 +1083,10 @@ function renderEnding(live) {
     return;
   }
   const ending = endingFor(r);
+  if (decision && ending.decision) {
+    decision.textContent = t(ending.decision);
+    decision.hidden = false;
+  }
   $('ending-caption').hidden = false;
   if (r.outcome === 'backup') text('ending-category', 'backupResultLabel', scoreLine('backup'));
   else text('ending-category', 'endingLabel');
@@ -1186,8 +1211,9 @@ function renderComparison() {
     button.setAttribute('aria-pressed', String(button.dataset.source === selectedSource));
   }
   const proof = r.leaked ? 'pairConnectedThisRun' : r.queued ? 'pairConnectedPrevented' : 'pairConnected';
+  const micPrompt = r.elapsed === CUE_TIME - 1 ? 'pairNeedMicDeadline' : 'pairNeedMic';
   const feedback = comparisonFeedback || (known('proof') ? proof : game.compared
-    ? !known('schedule') ? 'pairNeedSchedule' : !known('mic') ? 'pairNeedMic' : 'pairYes' : '');
+    ? !known('schedule') ? 'pairNeedSchedule' : !known('mic') ? micPrompt : 'pairYes' : '');
   $('compare-result').hidden = !feedback;
   text('compare-feedback', feedback);
 }

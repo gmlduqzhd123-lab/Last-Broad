@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=14">
-  <script defer src="./school-copy.js?v=14"></script>
-  <script defer src="./school.js?v=14"></script>
+  <link rel="stylesheet" href="./school.css?v=15">
+  <script defer src="./school-copy.js?v=15"></script>
+  <script defer src="./school.js?v=15"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -81,9 +81,12 @@
           <p id="public-score-pending" data-t="publicPending" hidden>교실 점수판 · 발표 대기</p>
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
+          <p id="handoff-student" class="pre-broadcast-line" data-t="handoffStudent" role="status" hidden></p>
           <p id="pre-broadcast-line" class="pre-broadcast-line" role="status" hidden></p>
           <div class="opening-record" id="opening-record" hidden>
             <p id="opening-record-copy" data-t="openingRecord">헤드폰에 12:40의 사고 기록이 들어왔어요. 12:36에 나갈 음원을 확인하세요.</p>
+            <div id="opening-monitor"></div>
+            <div id="opening-action"></div>
           </div>
         </div>
       </section>
@@ -178,6 +181,7 @@
             <li data-t="holdBlueReceipt">파랑 교실 · 안내 수신</li>
             <li data-t="holdYellowReceipt">노랑 교실 · 안내 수신</li>
           </ul>
+          <p class="hold-decision" id="hold-decision" hidden></p>
           <div class="hold-dialogue" id="hold-dialogue" hidden>
             <p id="hold-question" data-t="holdStudentCaption"></p>
             <p id="hold-answer" data-t="holdAnswerCaption"></p>
@@ -280,6 +284,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v14.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v15.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
