@@ -13,6 +13,11 @@ const AUDIO = {
   cleanReactions: 'clean-reactions', backupReactions: 'backup-reactions',
   swapBrief: 'swap-brief', readyYellow: 'ready-yellow', readyBlue: 'ready-blue',
   epilogueSave: 'epilogue-save', epilogueClock: 'epilogue-clock',
+  teacherCue: 'teacher-cue', classroomCue: 'classroom-cue',
+};
+const PRE_BROADCAST = {
+  [CUE_TIME - 2]: { caption: 'teacherPreparesEnvelope', clip: 'teacherCue' },
+  [CUE_TIME - 1]: { caption: 'classroomReadySignal', clip: 'classroomCue' },
 };
 const CLUES = {
   future: { title: 'futureClue', fact: 'futureFact', caption: 'future', clip: 'future' },
@@ -99,6 +104,7 @@ function load() {
     fresh.run = { ...fresh.run, ...run };
     if (!Object.hasOwn(LOOP_GOALS, run.goal)) fresh.run.goal = '';
     if (run.winnerCard) fresh.run.announcementReady = true;
+    if (inAnnouncementStandby(fresh.run)) fresh.run.mic = false;
     if (run.checked) fresh.run.answersClosed = true;
     if (run.queued && run.elapsed > CUE_TIME) fresh.run.questionDelivered = true;
     if (!Object.hasOwn(run, 'classroomAnswersReady') && (fresh.run.questionDelivered || run.backupGradePending)) {
@@ -124,7 +130,7 @@ let intro;
 let endingScene;
 let classroomScene;
 let announcementSignal = 0;
-let epilogueResolved = false;
+let epilogueScene = 'record';
 let incidentOpening = false;
 let incidentAudio;
 let journalAudio;
@@ -214,8 +220,12 @@ function playSwapBrief() {
   playAudio('swapBrief', false, () => startQueuedQuestion(run));
 }
 
+function inAnnouncementStandby(run) {
+  return run.queued && run.checked && !run.outcome && run.elapsed >= LIMIT - 2;
+}
+
 function awaitingAnnouncementCheck(run) {
-  return run.queued && run.elapsed === LIMIT - 2 && run.checked && !run.announcementReady && !run.outcome;
+  return inAnnouncementStandby(run) && run.elapsed === LIMIT - 2 && !run.announcementReady;
 }
 
 function startAnnouncementSignals(run) {
@@ -466,6 +476,11 @@ function step(message, apply = null, outcome = '') {
   r.elapsed += 1;
   r.message = message;
   if (message) record(message);
+  const leadIn = PRE_BROADCAST[r.elapsed];
+  if (leadIn) {
+    record(leadIn.caption);
+    if (!audio && message !== 'previewQueuedMessage') playAudio(leadIn.clip);
+  }
   if (r.elapsed === CUE_TIME) {
     if (r.queued) {
       r.message = 'cueClean';
@@ -493,7 +508,10 @@ function step(message, apply = null, outcome = '') {
     finish(r.queued && r.checked ? 'clean' : 'held');
     return;
   }
-  if (awaitingAnnouncementCheck(r)) startAnnouncementSignals(r);
+  if (awaitingAnnouncementCheck(r)) {
+    r.mic = false;
+    startAnnouncementSignals(r);
+  }
   save();
   render();
   if (gradingQuiz()) focusGradeCard();
@@ -504,10 +522,11 @@ function rewind() {
   if (endingScene) return;
   const r = game.run;
   const broadcasts = ['logClean', 'logBackup', 'logLeakOff', 'logLeakOn', 'logQuestionStarted'];
-  const missedDeadline = lastBackupChance(r) || missedBackupAirtime(r)
-    ? { minute: LIMIT - 1, text: 'logBackupAirtimeMissed' }
+  const lastSlot = missedBackupAirtime(r) ? 'logBackupAirtimeMissed' : lastBackupChance(r) ? 'logBackupVoluntaryRewind' : '';
+  const backupRecap = lastSlot
+    ? { minute: LIMIT - 1, text: lastSlot }
     : r.log.findLast((entry) => entry.text === 'logBackupClosed');
-  const moment = missedDeadline
+  const moment = backupRecap
     ?? r.log.findLast((entry) => broadcasts.includes(entry.text))
     ?? r.log.findLast((entry) => entry.text === 'logProof');
   game.previous = moment ?? { minute: r.elapsed, text: 'logNoEnd' };
@@ -529,7 +548,8 @@ function rewind() {
 
 function recommendedGoal() {
   if (game.loop < 2) return '';
-  if (['logBackupClosed', 'logBackupAirtimeMissed'].includes(game.previous?.text) && !game.unlocked.includes('backup')) return 'backup';
+  if (['logBackupClosed', 'logBackupAirtimeMissed', 'logBackupVoluntaryRewind'].includes(game.previous?.text)
+    && !game.unlocked.includes('backup')) return 'backup';
   return Object.keys(LOOP_GOALS).find((goal) => !game.unlocked.includes(goal)) ?? '';
 }
 
@@ -831,6 +851,10 @@ function liveEndingView() {
 
 function renderScene(live = liveEndingView()) {
   const r = game.run;
+  const standby = inAnnouncementStandby(r);
+  const ready = standby && (announcementSignal === 2 || r.announcementReady);
+  const leadIn = PRE_BROADCAST[r.elapsed];
+  const waiting = r.message === 'advanceMessage' || r.message === 'hallAdvanceMessage';
   const showOrigin = monitorSelection === 'future' && Boolean(game.previous);
   $('scene').dataset.room = r.room;
   text('place', r.room);
@@ -840,27 +864,33 @@ function renderScene(live = liveEndingView()) {
   text('scene-line', live ? live.line
     : r.outcome ? RESULT_SCENES[r.outcome].text : r.swapBriefPending ? 'swapBriefScene' : r.queued && r.elapsed === CUE_TIME ? 'questionClip'
       : r.leaked && r.elapsed === CUE_TIME && incidentOpening ? (r.leakMicOff ? 'leakOpeningOff' : 'leakOpeningOn')
+      : leadIn && waiting ? leadIn.caption
       : r.message || (game.loop > 1 ? 'remembered' : 'present'));
-  const onAir = (Boolean(live) && !published) || (!r.outcome && !r.assigned);
+  $('pre-broadcast-line').hidden = !leadIn || waiting;
+  if (leadIn && !waiting) text('pre-broadcast-line', leadIn.caption);
+  const onAir = (Boolean(live) && !published) || (!r.outcome && !r.assigned && !standby);
   $('air-label').dataset.held = String(!onAir);
-  $('air-label').lastElementChild.textContent = onAir ? 'ON AIR' : 'OFF AIR';
+  $('air-label').dataset.mode = standby ? 'standby' : onAir ? 'live' : 'off';
+  $('air-label').lastElementChild.textContent = standby ? t('announcementStandby') : onAir ? 'ON AIR' : 'OFF AIR';
   const micState = live?.mic ?? (r.mic && onAir ? 'open' : 'off');
   const pendingQuestion = awaitingQuestion(r);
-  const file = live?.file ?? (r.outcome ? 'closed' : r.swapBriefPending ? 'waiting'
+  const file = live?.file ?? (r.outcome ? 'closed' : standby ? 'announcementStandby' : r.swapBriefPending ? 'waiting'
     : r.assigned ? 'held' : r.leaked ? r.elapsed === CUE_TIME ? 'publicNow' : 'publicDone'
       : pendingQuestion ? 'questionDelivery' : r.queued && r.elapsed >= CUE_TIME ? 'cleanNow' : 'waiting');
-  text('console-status', live?.status ?? (r.outcome ? 'closed' : r.swapBriefPending ? 'cueSwapped' : r.assigned ? 'consoleHeld'
+  text('console-status', live?.status ?? (r.outcome ? 'closed' : standby ? ready ? 'announcementConsoleReady' : 'announcementConsoleWaiting'
+    : r.swapBriefPending ? 'cueSwapped' : r.assigned ? 'consoleHeld'
     : r.leaked ? 'consoleAccident' : pendingQuestion ? 'questionDeliveryStatus' : r.elapsed >= CUE_TIME ? 'consoleClean' : 'consoleReady'));
   text('mic-status', micState);
   text('file-status', file);
-  text('headphone-status', 'private');
+  text('headphone-status', standby ? 'announcementTalkback' : 'private');
   $('mic-channel').dataset.state = micState === 'off' ? 'off' : 'live';
   $('file-channel').dataset.state = ['publicNow', 'publicDone', 'cleanNow', 'backupNow', 'liveNotice', 'questionDelivery'].includes(file) ? 'live' : 'off';
   text('cue', live?.cue ??
     (r.outcome === 'backup' ? 'cueBackup' : r.outcome === 'held' ? 'cueHeldResult' : r.outcome === 'clean' ? 'cueCleanResult'
+      : standby ? ready ? 'announcementReadyCue' : 'announcementWaitingCue'
       : lastBackupChance(r) ? 'finalBackupTitle' : missedBackup(r) ? 'lateTight' : r.assigned ? 'cueHeld'
         : r.leaked ? r.leakMicOff ? 'cueOff' : 'cueOn'
-          : r.queued ? r.swapBriefPending ? 'cueSwapped' : pendingQuestion ? 'questionDeliveryCue' : r.elapsed >= CUE_TIME ? 'questionDeliveredCue' : 'cueSwapped' : 'cuePending'));
+          : r.queued ? r.swapBriefPending ? 'cueSwapped' : pendingQuestion ? 'questionDeliveryCue' : r.elapsed >= CUE_TIME ? 'questionDeliveredCue' : 'cueSwapped' : 'cuePending'), clock(r.elapsed));
   text('monitor-label', monitorInfo()[0]);
   $('monitor').disabled = Boolean(live || r.swapBriefPending);
   $('replay-incident').hidden = Boolean(live || r.outcome !== 'backup');
@@ -902,7 +932,7 @@ function renderGoals() {
 
 function renderAnnouncementCheck() {
   const r = game.run;
-  const open = awaitingAnnouncementCheck(r) || (!r.outcome && r.queued && r.announcementReady && r.elapsed === LIMIT - 1);
+  const open = inAnnouncementStandby(r);
   $('announcement-check').hidden = !open;
   document.body.dataset.announcement = String(open);
   if (!open) return;
@@ -1174,28 +1204,36 @@ for (const button of $('loop-goals').querySelectorAll('[data-goal]')) {
 }
 
 function renderEpilogue() {
-  $('epilogue-view').dataset.shot = epilogueResolved ? 'forward' : 'archive';
-  $('epilogue-clock').textContent = epilogueResolved ? '12:41' : '12:40';
-  text('epilogue-frame', epilogueResolved ? 'epilogueForwardFrame' : 'epilogueArchiveFrame');
-  text('epilogue-caption', epilogueResolved ? 'epilogueForwardCaption' : 'epilogueArchiveCaption');
-  $('epilogue-advance').hidden = epilogueResolved;
+  $('epilogue-view').dataset.shot = epilogueScene;
+  $('epilogue-clock').textContent = epilogueScene === 'forward' ? '12:41' : '12:40';
+  text('epilogue-frame', { record: 'epilogueRecordFrame', archive: 'epilogueArchiveFrame', forward: 'epilogueForwardFrame' }[epilogueScene]);
+  $('epilogue-caption').hidden = epilogueScene === 'record';
+  if (epilogueScene !== 'record') text('epilogue-caption', epilogueScene === 'forward' ? 'epilogueForwardCaption' : 'epilogueArchiveCaption');
+  $('epilogue-advance').hidden = epilogueScene === 'forward';
+  text('epilogue-advance', epilogueScene === 'record' ? 'epilogueRecordOpen' : 'epilogueAdvance');
 }
 
 function openEpilogue() {
   const run = game.run;
   if (!epilogueUnlocked() || endingScene || (!run.outcome && run.elapsed !== 0)) return;
   $('menu').open = false;
-  epilogueResolved = false;
+  stopAudio();
+  epilogueScene = 'record';
   renderEpilogue();
   $('epilogue').showModal();
-  playAudio('epilogueSave');
 }
 
 $('ending-epilogue').addEventListener('click', openEpilogue);
 $('menu-epilogue').addEventListener('click', openEpilogue);
 $('epilogue-advance').addEventListener('click', () => {
-  if (!$('epilogue').open || epilogueResolved) return;
-  epilogueResolved = true;
+  if (!$('epilogue').open || epilogueScene === 'forward') return;
+  if (epilogueScene === 'record') {
+    epilogueScene = 'archive';
+    renderEpilogue();
+    playAudio('epilogueSave');
+    return;
+  }
+  epilogueScene = 'forward';
   game.epilogueSeen = true;
   save();
   renderEpilogue();

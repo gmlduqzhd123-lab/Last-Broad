@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=8">
-  <script defer src="./school-copy.js?v=8"></script>
-  <script defer src="./school.js?v=8"></script>
+  <link rel="stylesheet" href="./school.css?v=9">
+  <script defer src="./school-copy.js?v=9"></script>
+  <script defer src="./school.js?v=9"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -81,6 +81,7 @@
           <p id="public-score-pending" data-t="publicPending" hidden>교실 점수판 · 발표 대기</p>
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
+          <p id="pre-broadcast-line" class="pre-broadcast-line" role="status" hidden></p>
         </div>
       </section>
 
@@ -202,16 +203,17 @@
   </dialog>
 
   <dialog id="epilogue" aria-labelledby="epilogue-title" class="intro epilogue">
-    <div class="intro-view epilogue-view" id="epilogue-view" data-shot="archive">
+    <div class="intro-view epilogue-view" id="epilogue-view" data-shot="record">
       <div class="intro-copy">
+        <p class="epilogue-origin" id="epilogue-origin" data-t="epilogueOrigin">정상 방송 회차</p>
         <time id="epilogue-clock" role="status">12:40</time>
         <h2 id="epilogue-title" data-t="epilogueTitle">다음 방송</h2>
-        <p id="epilogue-frame"></p>
+        <p id="epilogue-frame" aria-live="polite"></p>
         <p id="epilogue-caption"></p>
       </div>
     </div>
     <div class="dialog-actions">
-      <button class="primary" id="epilogue-advance" type="button" data-t="epilogueAdvance">헤드폰 벗기</button>
+      <button class="primary" id="epilogue-advance" type="button">정상 방송 기록 열기</button>
       <button class="utility" id="epilogue-close" type="button" data-t="close">닫기</button>
     </div>
   </dialog>
@@ -252,6 +254,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v8.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v9.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
