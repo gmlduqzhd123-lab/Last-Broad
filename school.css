@@ -106,6 +106,7 @@ body[data-incident="true"] .cue { color: var(--red); }
 .play-symbol { font-size: .69rem; }
 .monitor-caption { color: var(--paper); font-size: .87rem; margin-top: 7px; padding: 7px; border-inline-start: 2px solid var(--mint); background: #17232b; white-space: pre-line; }
 .monitor-origin { color: var(--gold); margin-top: 6px; padding-inline: 7px; font-size: .82rem; }
+.excerpt-prompt { color: var(--muted); margin-top: 6px; padding-inline: 7px; font-size: .82rem; }
 .excerpt { width: 100%; margin-top: 6px; color: var(--gold); text-align: left; font-weight: 680; }
 .play-step { grid-area: choices; display: grid; gap: 8px; min-width: 0; }
 .swap-brief { padding: 10px; border: 1px solid #6c9c8d; border-radius: 9px; background: var(--panel); }
@@ -178,6 +179,10 @@ button[data-action="askEnvelope"] { grid-column: 1 / -1; }
 .winner-reactions p { margin-top: 3px; line-height: 1.4; }
 .ending h2 { margin: 4px 0 8px; font-size: clamp(1.45rem, 3vw, 2.3rem); letter-spacing: -.04em; }
 .ending #ending-caption { font-weight: 700; color: var(--gold); min-height: 1.65em; margin-bottom: 6px; white-space: pre-line; }
+.backup-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.backup-options li { padding: 5px 8px; border: 1px solid #566c69; border-radius: 6px; background: var(--deep); }
+.hold-dialogue { margin-block: 10px; padding: 8px 10px; border-inline-start: 2px solid var(--mint); background: var(--deep); }
+.hold-dialogue p + p { margin-top: 6px; }
 .ending #ending-story { color: var(--paper); }
 .ending-next { margin-top: 8px; color: var(--muted); font-size: .88rem; }
 .end-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }

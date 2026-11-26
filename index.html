@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=11">
-  <script defer src="./school-copy.js?v=11"></script>
-  <script defer src="./school.js?v=11"></script>
+  <link rel="stylesheet" href="./school.css?v=12">
+  <script defer src="./school-copy.js?v=12"></script>
+  <script defer src="./school.js?v=12"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -101,9 +101,11 @@
           <span id="monitor-label"></span>
           <small data-t="noCost">시간 유지</small>
         </button>
-        <p class="monitor-caption" id="monitor-caption" role="status" hidden></p>
+        <p class="monitor-caption" id="monitor-caption" role="status" tabindex="-1" hidden></p>
         <p class="monitor-origin" id="monitor-origin" hidden></p>
-        <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" hidden>사고 구간 수첩에 담기</button>
+        <p class="excerpt-prompt" id="excerpt-prompt" data-t="excerptPrompt" hidden></p>
+        <button class="utility excerpt" id="save-excerpt" type="button" data-t="saveExcerpt" aria-describedby="excerpt-prompt" hidden>수첩에 저장</button>
+        <button class="utility excerpt" id="excerpt-compare" type="button" data-t="excerptCompare" hidden>수첩에서 두 녹음 비교하기</button>
         <button class="utility excerpt" id="replay-incident" type="button" data-t="previewLeak" hidden>12:36 정답 유출 다시 듣기</button>
         <button class="utility excerpt" id="incident-compare" type="button" data-t="incidentCompare" hidden>수첩에서 연습 원본과 비교</button>
       </section>
@@ -160,11 +162,15 @@
           </div>
           <h2 id="ending-title" tabindex="-1"></h2>
           <p id="ending-caption" role="status"></p>
+          <ul class="backup-options" id="backup-options" aria-labelledby="ending-caption" hidden></ul>
           <ul class="hold-receipts" id="hold-receipts" hidden>
             <li data-t="holdBlueReceipt">파랑 교실 · 안내 수신</li>
             <li data-t="holdYellowReceipt">노랑 교실 · 안내 수신</li>
           </ul>
-          <p id="hold-answer" data-t="holdAnswerCaption" hidden></p>
+          <div class="hold-dialogue" id="hold-dialogue" hidden>
+            <p id="hold-question" data-t="holdStudentCaption"></p>
+            <p id="hold-answer" data-t="holdAnswerCaption"></p>
+          </div>
           <ul class="winner-reactions" id="winner-reactions" hidden>
             <li id="winner-room"><strong id="winner-room-title"></strong><p id="winner-room-line"></p></li>
             <li id="other-room"><strong id="other-room-title"></strong><p id="other-room-line"></p></li>
@@ -256,6 +262,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v11.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v12.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
