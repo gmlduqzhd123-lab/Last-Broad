@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=9">
-  <script defer src="./school-copy.js?v=9"></script>
-  <script defer src="./school.js?v=9"></script>
+  <link rel="stylesheet" href="./school.css?v=10">
+  <script defer src="./school-copy.js?v=10"></script>
+  <script defer src="./school.js?v=10"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -156,6 +156,7 @@
           <div class="ending-meta">
             <span id="ending-category"></span><span id="ending-count"></span>
             <span class="air-label" id="ending-on-air" hidden><i aria-hidden="true"></i>ON AIR</span>
+            <span class="air-label" id="ending-standby" data-mode="standby" hidden><i aria-hidden="true"></i><span data-t="announcementStandby">발표 대기</span></span>
           </div>
           <h2 id="ending-title" tabindex="-1"></h2>
           <p id="ending-caption" role="status"></p>
@@ -163,6 +164,7 @@
             <li data-t="holdBlueReceipt">파랑 교실 · 안내 수신</li>
             <li data-t="holdYellowReceipt">노랑 교실 · 안내 수신</li>
           </ul>
+          <p id="hold-answer" data-t="holdAnswerCaption" hidden></p>
           <ul class="winner-reactions" id="winner-reactions" hidden>
             <li id="winner-room"><strong id="winner-room-title"></strong><p id="winner-room-line"></p></li>
             <li id="other-room"><strong id="other-room-title"></strong><p id="other-room-line"></p></li>
@@ -254,6 +256,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v9.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v10.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
