@@ -52,6 +52,7 @@ main { padding-block: 20px 36px; }
 #memory { color: var(--gold); }
 #mission { font-size: clamp(1.05rem, 2.4vw, 1.4rem); line-height: 1.28; letter-spacing: -.028em; }
 .clock-face { display: grid; justify-items: end; gap: 3px; color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.mobile-clock-slot, #desktop-clock-slot:empty { display: none; }
 #clock { font: 800 clamp(1.65rem, 3.6vw, 2.25rem)/1 var(--mono); letter-spacing: -.04em; color: var(--gold); }
 body[data-urgent="true"] #clock { color: var(--red); }
 .track { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
@@ -196,6 +197,8 @@ button[data-action="askEnvelope"] { grid-column: 1 / -1; }
 .ending #ending-story { color: var(--paper); }
 .ending-next { margin-top: 8px; color: var(--muted); font-size: .88rem; white-space: pre-line; }
 .end-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ending-resume { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-block: 4px 10px; }
+.ending-resume p { color: var(--muted); font-size: .88rem; }
 dialog { width: min(660px, calc(100% - 20px)); max-height: calc(100dvh - 20px); padding: 0; border: 1px solid #677b83; border-radius: 12px; background: #1b2831; color: var(--paper); box-shadow: 0 16px 60px #05090be6; }
 dialog::backdrop { background: #080e17bb; }
 .dialog-heading { display: flex; justify-content: space-between; gap: 9px; align-items: start; padding: 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1; background: #1b2831; }
@@ -203,6 +206,16 @@ dialog::backdrop { background: #080e17bb; }
 .dialog-heading p, .compare > p { color: var(--muted); font-size: .88rem; }
 .dialog-heading button { flex-shrink: 0; }
 .dialog-body { padding: 14px; }
+#journal[open] { display: flex; flex-direction: column; overflow: hidden; }
+#journal .dialog-body { min-height: 0; overflow-y: auto; }
+.journal-compare-actions {
+  display: flex; flex-shrink: 0; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 8px 14px; border-top: 1px solid var(--line); background: var(--deep);
+}
+.journal-compare-actions button { flex-shrink: 0; margin-inline-start: auto; }
+#compare-selection-summary { min-width: 0; font-size: .75rem; color: var(--mint); }
+#compare-selection { margin: 2px 0 0; padding: 0; list-style: none; color: var(--paper); }
+#compare-selection li { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dialog-actions { display: flex; align-items: center; justify-content: end; padding: 10px 14px; gap: 8px; }
 .intro { width: min(800px, calc(100% - 22px)); }
 .intro-view { min-height: clamp(220px, 47vw, 410px); position: relative; isolation: isolate; display: flex; align-items: end; background: #263b45 url("./media/school-studio.webp") center / cover; }
@@ -244,10 +257,19 @@ dialog::backdrop { background: #080e17bb; }
 .recording-sample .clue-transcript { margin-top: 6px; font-size: .84rem; white-space: pre-line; }
 #recording-missing { margin-bottom: 6px; color: var(--gold); }
 @media (max-width: 700px) {
+  html { scroll-padding-top: 46px; }
   .shell { width: min(520px, calc(100% - 22px)); }
   .topbar-inner { min-height: 57px; }
   main { padding-block: 8px 25px; }
   .hud { padding: 9px 10px 7px; margin-bottom: 8px; gap: 6px 8px; }
+  .mobile-clock-slot:not(:empty) { display: block; position: sticky; top: 0; z-index: 2; margin-bottom: 5px; }
+  .mobile-clock-slot .clock-face {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px;
+    padding: 4px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--deep); white-space: normal; text-align: end;
+  }
+  .mobile-clock-slot #clock { font-size: 1.38rem; }
+  #game:has(.mobile-clock-slot:not(:empty)) .hud { grid-template-columns: minmax(0, 1fr); }
   .loop-goals { margin-bottom: 8px; padding: 8px; }
   .play-grid { grid-template-columns: 1fr; grid-template-areas: "scene" "console" "choices" "history"; gap: 8px; }
   .scene { min-height: 125px; }
@@ -286,8 +308,9 @@ dialog::backdrop { background: #080e17bb; }
   .listen { font-size: .79rem; }
   .action-heading .small { font-size: .75rem; padding-inline: 5px; }
   body:is([data-emergency="true"], [data-delivery="true"]) :is(#game-title, #console-status, .action-heading) { display: none; }
-  body:is([data-emergency="true"], [data-delivery="true"]) .scene { min-height: 76px; }
-  body:is([data-emergency="true"], [data-delivery="true"]) .scene-inner { padding-block: 7px; }
+  body[data-backup-deadline="true"] #game-title { display: none; }
+  body:is([data-emergency="true"], [data-delivery="true"], [data-backup-deadline="true"]) .scene { min-height: 76px; }
+  body:is([data-emergency="true"], [data-delivery="true"], [data-backup-deadline="true"]) .scene-inner { padding-block: 7px; }
   body[data-emergency="true"] .actions [data-action="hold"] { grid-column: 1 / -1; }
   body[data-announcement="true"] .scene { min-height: 76px; }
   body[data-announcement="true"] :is(#game-title, #scene-line, #choices-heading) { display: none; }
