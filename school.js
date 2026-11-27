@@ -138,6 +138,7 @@ let incidentOpening = false;
 let incidentAudio;
 let handoffTimer;
 let journalAudio;
+let journalExitFocus;
 let gradeFeedback = '';
 let monitorSelection;
 const selected = new Set();
@@ -497,7 +498,7 @@ function finish(kind) {
   }
 }
 
-function step(message, apply = null, outcome = '') {
+function step(message, apply = null, outcome = '', minutes = 1) {
   const r = game.run;
   if (r.outcome || r.elapsed >= LIMIT) return;
   if (!outcome && lastBackupChance(r)) record('logBackupAirtimeMissed');
@@ -506,7 +507,12 @@ function step(message, apply = null, outcome = '') {
   monitorSelection = null;
   stopAudio();
   if (apply) apply(r);
-  r.elapsed += 1;
+  const endMinute = r.elapsed + minutes;
+  for (let minute = r.elapsed + 1; minute < endMinute; minute += 1) {
+    const cue = PRE_BROADCAST[minute];
+    if (cue) record(cue.caption, minute);
+  }
+  r.elapsed = endMinute;
   r.message = message;
   if (message) record(message);
   const leadIn = PRE_BROADCAST[r.elapsed];
@@ -551,14 +557,15 @@ function step(message, apply = null, outcome = '') {
   else $('actions').querySelector('[data-primary="true"]')?.focus({ preventScroll: true });
 }
 
-function rewind() {
+function rewind(reason = '') {
   if (endingScene) return;
   const r = game.run;
   const broadcasts = ['logClean', 'logBackup', 'logLeakOff', 'logLeakOn', 'logQuestionStarted'];
   const backupRecap = missedBackupAirtime(r) ? { minute: LIMIT - 1, text: 'logBackupAirtimeMissed' }
     : r.backup && !r.outcome ? { minute: r.elapsed, text: r.returned ? 'logBackupVoluntaryRewind' : 'logBackupEnvelopeRewind' }
       : r.log.findLast((entry) => entry.text === 'logBackupClosed');
-  const moment = backupRecap
+  const decision = reason === 'logMicCheckRewind' ? { minute: r.elapsed, text: reason } : null;
+  const moment = decision ?? backupRecap
     ?? r.log.findLast((entry) => broadcasts.includes(entry.text))
     ?? r.log.findLast((entry) => entry.text === 'logProof');
   game.previous = moment ?? { minute: r.elapsed, text: 'logNoEnd' };
@@ -572,6 +579,10 @@ function rewind() {
   gradeFeedback = '';
   stopAudio();
   $('history').open = false;
+  if ($('journal').open) {
+    journalExitFocus = $('mission');
+    $('journal').close();
+  }
   if ($('review-dialog').open) $('review-dialog').close();
   save();
   render();
@@ -584,6 +595,7 @@ const openingTurn = () => game.loop === 1 && game.run.elapsed === 0 && !game.run
 
 function recommendedGoal() {
   if (game.loop < 2) return '';
+  if (game.previous?.text === 'logMicCheckRewind') return 'clean';
   if (retryEnvelopeAirtime() || (game.previous?.text === 'logBackupClosed' && !game.unlocked.includes('backup'))) return 'backup';
   return Object.keys(LOOP_GOALS).find((goal) => !game.unlocked.includes(goal)) ?? '';
 }
@@ -727,6 +739,10 @@ function actionChoices() {
     }, false, revisit ? 'hallRevisit' : 'hallVisit');
   }
   const waitingForLeak = activeGoal() === 'backup' || activeGoal() === 'held';
+  if (activeGoal() === 'backup' && retryEnvelopeAirtime() && r.room === 'studio' && !r.mic && r.elapsed > 0 && r.elapsed < CUE_TIME - 1) {
+    const cost = CUE_TIME - r.elapsed;
+    choices.unshift({ id: 'waitUntilLeak', detail: 'fastWaitDetail', cost, run: () => step('logFastWait', null, '', cost) });
+  }
   offer('advance', waitingForLeak ? 'waitForLeakDetail' : 'advanceDetail',
     () => step(r.room === 'hall' ? 'hallAdvanceMessage' : 'advanceMessage'), false, waitingForLeak ? 'waitForLeak' : 'advance');
   return choices;
@@ -746,16 +762,18 @@ function renderChoices() {
   const goal = activeGoal();
   let priority;
   if (goal === 'held' && r.leaked && !r.assigned) priority = 'hold';
-  if (goal && goal !== 'clean' && !r.queued && !r.leaked) priority = r.mic && r.room === 'studio' ? 'mute' : 'advance';
+  if (goal && goal !== 'clean' && !r.queued && !r.leaked && choices[0]?.id !== 'waitUntilLeak') {
+    priority = r.mic && r.room === 'studio' ? 'mute' : 'advance';
+  }
   const priorityIndex = choices.findIndex((choice) => choice.id === priority);
   if (priorityIndex > 0) choices.unshift(...choices.splice(priorityIndex, 1));
-  $('actions').replaceChildren(...choices.map(({ id, detail, run, free, label = id }, index) => {
+  $('actions').replaceChildren(...choices.map(({ id, detail, run, free, cost = 1, label = id }, index) => {
     const button = node('button', '', 'action');
     button.type = 'button';
     button.dataset.action = id;
     button.dataset.primary = String(index === 0);
     const title = node('span', '', 'action-top');
-    title.append(node('strong', t(label)), node('small', t(free ? 'noCost' : 'one')));
+    title.append(node('strong', t(label)), node('small', t(free ? 'noCost' : cost === 1 ? 'one' : 'actionCount', cost)));
     const warning = ['handoffClueCost', 'finalClueCost', 'muteDeadlineDetail'].includes(detail);
     button.append(title, node('span', t(detail), warning ? 'action-detail action-warning' : 'action-detail'));
     button.addEventListener('click', run);
@@ -933,8 +951,9 @@ function renderScene(live = liveEndingView()) {
   const r = game.run;
   const announcementStandby = inAnnouncementStandby(r);
   const ready = announcementStandby && (announcementSignal === 2 || r.announcementReady);
+  const questionStandby = !r.outcome && r.swapBriefPending;
   const standbyLabel = announcementStandby || live?.standby ? 'announcementStandby'
-    : !r.outcome && r.assigned && !r.handoffPending ? 'broadcastStandby' : '';
+    : questionStandby ? 'questionStandby' : !r.outcome && r.assigned && !r.handoffPending ? 'broadcastStandby' : '';
   const leadIn = PRE_BROADCAST[r.elapsed];
   const waiting = r.message === 'advanceMessage' || r.message === 'hallAdvanceMessage';
   const showOrigin = monitorSelection === 'future' && Boolean(game.previous);
@@ -950,6 +969,8 @@ function renderScene(live = liveEndingView()) {
       : r.message || (game.loop > 1 ? 'remembered' : 'present'));
   const showStudent = !r.outcome && r.leaked && r.assigned && r.elapsed === CUE_TIME + 1;
   $('handoff-student')?.toggleAttribute('hidden', !showStudent);
+  const showFastWait = canStartBackup(r) && r.log.some((entry) => entry.text === 'logFastWait');
+  $('fast-wait-summary')?.toggleAttribute('hidden', !showFastWait);
   $('pre-broadcast-line').hidden = !leadIn || waiting || r.message === 'teacherEnvelopeReply';
   if (!$('pre-broadcast-line').hidden) text('pre-broadcast-line', leadIn.caption);
   const onAir = !standbyLabel && (Boolean(live && !published) || r.handoffPending || (!r.outcome && !r.assigned));
@@ -958,18 +979,21 @@ function renderScene(live = liveEndingView()) {
   $('air-label').lastElementChild.textContent = standbyLabel ? t(standbyLabel) : onAir ? 'ON AIR' : 'OFF AIR';
   const micState = live?.mic ?? (r.handoffPending ? 'jiuMic' : r.mic && onAir ? 'open' : 'off');
   const pendingQuestion = awaitingQuestion(r);
+  const questionReceived = r.queued && r.questionDelivered && r.elapsed === CUE_TIME;
   const file = live?.file ?? (r.outcome ? 'closed' : r.handoffPending ? 'liveNotice' : standbyLabel ? standbyLabel
-    : r.swapBriefPending ? 'waiting' : r.leaked ? r.elapsed === CUE_TIME ? 'publicNow' : 'publicDone'
-      : pendingQuestion ? 'questionDelivery' : r.queued && r.elapsed >= CUE_TIME ? 'cleanNow' : 'waiting');
+    : r.leaked ? r.elapsed === CUE_TIME ? 'publicNow' : 'publicDone'
+      : pendingQuestion ? 'questionDelivery' : questionReceived ? 'questionReceived'
+        : r.queued ? r.elapsed < CUE_TIME ? 'questionStandby' : 'cleanNow' : 'waiting');
   text('console-status', live?.status ?? (r.outcome ? 'closed' : r.handoffPending ? 'handoffOnAirStatus'
     : announcementStandby ? ready ? 'announcementConsoleReady' : 'announcementConsoleWaiting'
-    : r.swapBriefPending ? 'cueSwapped' : r.assigned ? 'consoleHeld'
+    : questionStandby ? 'cueSwapped' : r.assigned ? 'consoleHeld'
     : r.leaked ? 'consoleAccident' : pendingQuestion ? 'questionDeliveryStatus' : r.elapsed >= CUE_TIME ? 'consoleClean' : 'consoleReady'));
   text('mic-status', micState);
   text('file-status', file);
   text('headphone-status', announcementStandby ? 'announcementTalkback' : 'private');
   $('mic-channel').dataset.state = micState === 'off' ? 'off' : 'live';
-  $('file-channel').dataset.state = ['publicNow', 'publicDone', 'cleanNow', 'backupNow', 'liveNotice', 'questionDelivery'].includes(file) ? 'live' : 'off';
+  $('file-channel').dataset.state = file === 'questionReceived' ? 'received'
+    : ['publicNow', 'publicDone', 'cleanNow', 'backupNow', 'liveNotice', 'questionDelivery'].includes(file) ? 'live' : 'off';
   text('cue', live?.cue ??
     (r.outcome === 'backup' ? 'cueBackup' : r.outcome === 'held' ? 'cueHeldResult' : r.outcome === 'clean' ? 'cueCleanResult'
       : r.handoffPending ? 'handoffLiveCue' : announcementStandby ? ready ? 'announcementReadyCue' : 'announcementWaitingCue'
@@ -1108,7 +1132,7 @@ function render() {
   text('mission', live?.title ?? (gradingQuiz() ? 'missionGrade' : mission()));
   $('memory').hidden = !game.previous;
   if (game.previous) text('memory', 'previous', clock(game.previous.minute), t(game.previous.text));
-  const hint = { logBackupClosed: 'rewindBackupHint', logBackupAirtimeMissed: 'rewindAirtimeHint' }[game.previous?.text];
+  const hint = { logBackupClosed: 'rewindBackupHint', logBackupAirtimeMissed: 'rewindAirtimeHint', logMicCheckRewind: 'rewindMicHint' }[game.previous?.text];
   $('rewind-hint').hidden = !hint || r.elapsed !== 0;
   if (hint) text('rewind-hint', hint);
   $('journal-count').textContent = game.known.length;
@@ -1142,42 +1166,60 @@ function render() {
 }
 
 function leakRecordingCopy() {
-  if (game.run.leaked) return { title: 'leakClueThisRun', fact: 'leakFactThisRun', listen: 'leakListenThisRun' };
+  if (game.run.leaked) return { title: 'leakClueThisRun', fact: 'leakFactThisRun' };
   if (game.leakOrigin === 'future') return {
-    title: 'leakClueFuture', fact: game.run.queued ? 'leakFactPrevented' : 'leakFactFuture', listen: 'leakListenFuture',
+    title: 'leakClueFuture', fact: game.run.queued ? 'leakFactPrevented' : 'leakFactFuture',
   };
-  if (game.leakOrigin === 'rewound') return { title: 'leakClueRewound', fact: 'leakFactRewound', listen: 'leakListenRewound' };
-  return { title: 'leakClue', fact: 'leakFact', listen: 'leakSample' };
+  if (game.leakOrigin === 'rewound') return { title: 'leakClueRewound', fact: 'leakFactRewound' };
+  return { title: 'leakClue', fact: 'leakFact' };
+}
+
+function cluePlayback(id, title, label) {
+  const clue = CLUES[id];
+  const listen = node('button', t(label), 'utility');
+  listen.type = 'button';
+  listen.setAttribute('aria-label', t(label) + ' · ' + t(title));
+  const transcript = node('p', t(clue.caption), 'clue-transcript');
+  transcript.hidden = true;
+  listen.addEventListener('click', () => {
+    transcript.hidden = false;
+    journalAudio = playAudio(clue.clip, true);
+  });
+  return [listen, transcript];
 }
 
 function renderJournal() {
   const leak = leakRecordingCopy();
-  text('leak-listen', leak.listen);
   $('journal-clues').replaceChildren(...game.known.map((id) => {
     const clue = CLUES[id];
     const { title, fact } = id === 'leak' ? leak : clue;
     const item = node('li');
     item.append(node('h3', t(title)), node('p', t(fact)));
     if (clue.clip) {
-      const listen = node('button', t('audioReplay'), 'utility');
-      listen.type = 'button';
+      const [listen, transcript] = cluePlayback(id, title, 'audioReplay');
       listen.dataset.clip = id;
-      listen.setAttribute('aria-label', t('audioReplay') + ' · ' + t(title));
-      const transcript = node('p', t(clue.caption), 'clue-transcript');
-      transcript.hidden = true;
-      listen.addEventListener('click', () => {
-        transcript.hidden = false;
-        journalAudio = playAudio(clue.clip, true);
-      });
       item.append(listen, transcript);
     }
     return item;
   }));
-  $('compare-options').replaceChildren(...RECORDINGS.filter(known).map((id) => {
-    const button = node('button', t(id === 'leak' ? leak.title : CLUES[id].title), 'utility');
+  const options = $('compare-options');
+  const recordings = $('recording-pair');
+  // The static sample markup also supports the previous bundle during a hosted update.
+  if (options.parentElement !== recordings) recordings.replaceChildren(options);
+  options.replaceChildren(...RECORDINGS.filter(known).map((id) => {
+    const title = id === 'leak' ? leak.title : CLUES[id].title;
+    const sample = node('div', '', 'recording-sample');
+    sample.id = id + '-sample';
+    const heading = node('strong', t(title));
+    heading.id = id + '-sample-title';
+    const [listen, transcript] = cluePlayback(id, title, 'recordingListen');
+    listen.id = id + '-listen';
+    transcript.id = id + '-sample-caption';
+    const controls = node('div', '', 'recording-controls');
+    const button = node('button', '', 'utility');
     button.type = 'button';
     button.dataset.recording = id;
-    button.setAttribute('aria-pressed', String(selected.has(id)));
+    button.setAttribute('aria-describedby', heading.id);
     button.addEventListener('click', () => {
       if (selected.has(id)) selected.delete(id);
       else {
@@ -1186,18 +1228,20 @@ function renderJournal() {
       }
       renderComparison();
     });
-    return button;
+    controls.append(listen, button);
+    sample.append(heading, controls, transcript);
+    return sample;
   }));
-  for (const id of ['practice', 'leak']) {
-    $(id + '-sample').hidden = !known(id);
-    $(id + '-sample-caption').hidden = true;
-  }
   $('recording-missing').hidden = !known('leak') || known('practice');
-  $('recording-pair').hidden = !known('leak') && !known('practice');
+  recordings.hidden = !options.childElementCount;
   renderComparison();
 }
 function renderComparison() {
-  for (const button of $('compare-options').children) button.setAttribute('aria-pressed', String(selected.has(button.dataset.recording)));
+  for (const button of $('compare-options').querySelectorAll('[data-recording]')) {
+    const included = selected.has(button.dataset.recording);
+    button.setAttribute('aria-pressed', String(included));
+    button.textContent = t(included ? 'recordingSelected' : 'recordingSelect');
+  }
   $('compare').disabled = selected.size !== 2 || known('proof');
   const r = game.run;
   const readyToConnect = game.compared && !known('proof') && known('mic') && known('schedule');
@@ -1215,6 +1259,7 @@ function renderComparison() {
   const feedback = comparisonFeedback || (known('proof') ? proof : game.compared
     ? !known('schedule') ? 'pairNeedSchedule' : !known('mic') ? micPrompt : 'pairYes' : '');
   $('compare-result').hidden = !feedback;
+  $('compare-decision')?.toggleAttribute('hidden', feedback !== 'pairNeedMicDeadline');
   text('compare-feedback', feedback);
 }
 function openJournal() {
@@ -1224,14 +1269,6 @@ function openJournal() {
   renderJournal();
   $('journal').showModal();
   if (known('practice') && known('schedule') && !known('proof')) $('compare-area').scrollIntoView({ block: 'nearest' });
-}
-for (const id of ['practice', 'leak']) {
-  $(id + '-listen').addEventListener('click', () => {
-    const caption = $(id + '-sample-caption');
-    caption.hidden = false;
-    caption.textContent = t(CLUES[id].caption);
-    journalAudio = playAudio(CLUES[id].clip, true);
-  });
 }
 for (const id of ['incident-compare', 'excerpt-compare']) {
   $(id).addEventListener('click', () => {
@@ -1272,10 +1309,19 @@ $('connect').addEventListener('click', () => {
 });
 $('journal-open').addEventListener('click', openJournal);
 $('journal-close').addEventListener('click', () => $('journal').close());
+$('journal-continue')?.addEventListener('click', () => {
+  journalExitFocus = $('actions').querySelector('[data-action="mute"], [data-action="advance"]');
+  $('journal').close();
+});
+$('journal-rewind')?.addEventListener('click', () => rewind('logMicCheckRewind'));
 $('journal').addEventListener('close', () => {
   if (audio === journalAudio) stopAudio();
   journalAudio = null;
-  if (!endingScene) $('journal-open').focus({ preventScroll: true });
+  if (!endingScene) {
+    const target = journalExitFocus ?? $('journal-open');
+    target.focus({ preventScroll: !journalExitFocus || target === $('mission') });
+  }
+  journalExitFocus = null;
 });
 function playMonitor() {
   const [, caption, clip] = monitorInfo();
@@ -1309,8 +1355,8 @@ $('review').addEventListener('click', () => {
   $('review-dialog').showModal();
 });
 $('review-close').addEventListener('click', () => $('review-dialog').close());
-$('review-rewind').addEventListener('click', rewind);
-$('rewind').addEventListener('click', rewind);
+$('review-rewind').addEventListener('click', () => rewind());
+$('rewind').addEventListener('click', () => rewind());
 for (const button of $('loop-goals').querySelectorAll('[data-goal]')) {
   button.addEventListener('click', () => {
     if ($('loop-goals').hidden || !Object.hasOwn(LOOP_GOALS, button.dataset.goal)) return;

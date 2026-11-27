@@ -102,6 +102,7 @@ body[data-urgent="true"] #clock { color: var(--red); }
 .channel[data-state="off"] strong { color: #c3cdd0; }
 .channel[data-state="live"] { border-color: #f18b76; background: #412a2d; }
 .channel[data-state="live"] strong { color: #ffd0c1; }
+.channel[data-state="received"] { border-color: #6c9c8d; }
 .cue { margin-block: 9px 7px; color: var(--gold); font-size: .83rem; line-height: 1.35; }
 body[data-incident="true"] .cue { color: var(--red); }
 .listen { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; text-align: left; gap: 6px; min-height: 44px; color: var(--mint); font-weight: 670; font-size: .88rem; padding-inline: 8px; }
@@ -225,17 +226,22 @@ dialog::backdrop { background: #080e17bb; }
 .clues .utility { margin-top: 6px; font-size: .83rem; }
 .clues .clue-transcript { padding: 6px 8px; border-inline-start: 2px solid var(--mint); white-space: pre-line; }
 .compare { margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--line); }
-.compare-options { display: flex; flex-wrap: wrap; gap: 5px; margin-block: 8px; }
+.compare-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 5px; margin-block: 8px; }
 .compare-options button { font-size: .83rem; }
 .compare-options button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: #47362b; }
 .compare-result { margin-block: 7px 10px; padding: 8px; border: 1px solid #567870; border-radius: 7px; background: var(--deep); }
+.compare-decision, .recording-controls { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 #compare-feedback { color: var(--mint); font-size: .9rem; }
 .compare-evidence { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 5px 0 0; padding: 0; list-style: none; color: var(--gold); font-size: .82rem; }
 .source-choice { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .source-choice p { flex: 0 0 100%; font-size: .87rem; }
 .source-choice [aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
 .recording-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 6px; margin-block: 8px; }
+.recording-pair #compare-options { grid-column: 1 / -1; margin-block: 0; }
 .recording-sample button { width: 100%; text-align: start; color: var(--mint); }
+.compare-options .recording-sample { min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--deep); font-size: .86rem; }
+.recording-controls button { width: auto; }
+.recording-sample .clue-transcript { margin-top: 6px; font-size: .84rem; white-space: pre-line; }
 #recording-missing { margin-bottom: 6px; color: var(--gold); }
 @media (max-width: 700px) {
   .shell { width: min(520px, calc(100% - 22px)); }

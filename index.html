@@ -14,9 +14,9 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon-32.png">
   <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./school.css?v=15">
-  <script defer src="./school-copy.js?v=15"></script>
-  <script defer src="./school.js?v=15"></script>
+  <link rel="stylesheet" href="./school.css?v=16">
+  <script defer src="./school-copy.js?v=16"></script>
+  <script defer src="./school.js?v=16"></script>
   <script defer src="./ys-install.js"></script>
   <script defer src="./ys-qr.js"></script>
   <title>한려 FM, 정답이 먼저 나갔다</title>
@@ -82,6 +82,7 @@
           <h1 id="game-title" data-t="title">정답이 먼저 나갔다</h1>
           <p id="scene-line" role="status"></p>
           <p id="handoff-student" class="pre-broadcast-line" data-t="handoffStudent" role="status" hidden></p>
+          <p id="fast-wait-summary" class="pre-broadcast-line" data-t="fastWaitSummary" role="status" hidden></p>
           <p id="pre-broadcast-line" class="pre-broadcast-line" role="status" hidden></p>
           <div class="opening-record" id="opening-record" hidden>
             <p id="opening-record-copy" data-t="openingRecord">헤드폰에 12:40의 사고 기록이 들어왔어요. 12:36에 나갈 음원을 확인하세요.</p>
@@ -250,6 +251,10 @@
         <h3 id="compare-title" data-t="compareTitle" tabindex="-1">녹음 두 개를 대조하기</h3>
         <div class="compare-result" id="compare-result" hidden>
           <p id="compare-feedback" role="status" tabindex="-1"></p>
+          <div class="compare-decision" id="compare-decision" hidden>
+            <button class="utility" id="journal-continue" type="button" data-t="journalContinue">이번 회차 계속</button>
+            <button class="primary" id="journal-rewind" type="button" data-t="rewind">12:32로 되감기</button>
+          </div>
           <ul class="compare-evidence" id="compare-evidence" hidden>
             <li data-t="compareQueueEvidence">12:36 예약 · 08:41 파일</li>
             <li id="compare-mic-evidence"></li>
@@ -284,6 +289,6 @@
     <div class="dialog-body"><ol id="review-list" class="review-list"></ol></div>
     <div class="dialog-actions"><button class="primary" id="review-rewind" type="button" data-t="rewind">12:32로 되감기</button></div>
   </dialog>
-  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v15.js', { updateViaCache: 'none' }));</script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./school-sw-v16.js', { updateViaCache: 'none' }));</script>
 </body>
 </html>
