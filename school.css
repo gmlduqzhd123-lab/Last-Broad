@@ -194,7 +194,7 @@ button[data-action="askEnvelope"] { grid-column: 1 / -1; }
 .hold-decision { margin-top: 8px; color: var(--gold); font-weight: 650; }
 .hold-dialogue p + p { margin-top: 6px; }
 .ending #ending-story { color: var(--paper); }
-.ending-next { margin-top: 8px; color: var(--muted); font-size: .88rem; }
+.ending-next { margin-top: 8px; color: var(--muted); font-size: .88rem; white-space: pre-line; }
 .end-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 dialog { width: min(660px, calc(100% - 20px)); max-height: calc(100dvh - 20px); padding: 0; border: 1px solid #677b83; border-radius: 12px; background: #1b2831; color: var(--paper); box-shadow: 0 16px 60px #05090be6; }
 dialog::backdrop { background: #080e17bb; }

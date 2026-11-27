@@ -16,6 +16,7 @@ const AUDIO = {
   epilogueSave: 'epilogue-save', epilogueClock: 'epilogue-clock',
   teacherCue: 'teacher-cue', classroomCue: 'classroom-cue',
   teacherEnvelope: 'teacher-envelope', teacherHandoff: 'teacher-handoff',
+  backupClassroom: 'backup-classroom',
 };
 const PRE_BROADCAST = {
   [CUE_TIME - 2]: { caption: 'teacherPreparesEnvelope', clip: 'teacherCue' },
@@ -33,18 +34,18 @@ const CLUES = {
 };
 const RECORDINGS = ['leak', 'practice', 'finalQuestion', 'door'];
 const ENDINGS = {
-  held: { title: 'endHeldTitle', caption: 'endHeldCaption', story: 'endHeldStory', next: 'endHeldNext', clip: 'hold' },
-  backup: { title: 'endBackupTitle', caption: 'winnerBackupCaption', story: 'endBackupStory', next: 'endBackupNext', clip: 'backupRestart' },
-  clean: { title: 'endCleanTitle', caption: 'endCleanCaption', story: 'endCleanStory', next: 'endCleanNext', clip: 'clean' },
+  held: { title: 'endHeldTitle', caption: 'endHeldCaption', story: 'endHeldStory', clip: 'hold' },
+  backup: { title: 'endBackupTitle', caption: 'winnerBackupCaption', story: 'endBackupStory', clip: 'backupRestart' },
+  clean: { title: 'endCleanTitle', caption: 'endCleanCaption', story: 'endCleanStory', clip: 'clean' },
 };
 const EXPLAINED_ENDINGS = {
-  held: { caption: 'endHeldKnownCaption', story: 'endHeldKnownStory', next: 'endHeldKnownNext', clip: 'holdKnown' },
+  held: { caption: 'endHeldKnownCaption', story: 'endHeldKnownStory', clip: 'holdKnown' },
   backup: { story: 'endBackupKnownStory', clip: 'backupRestartKnown' },
 };
 const LOOP_GOALS = {
-  clean: { label: 'goalClean', tip: 'goalCleanTip' },
-  backup: { label: 'goalBackup', tip: 'goalBackupTip' },
-  held: { label: 'goalHeld', tip: 'goalHeldTip' },
+  clean: { label: 'goalClean', endingLabel: 'endingRouteClean', tip: 'goalCleanTip' },
+  backup: { label: 'goalBackup', endingLabel: 'endingRouteBackup', tip: 'goalBackupTip' },
+  held: { label: 'goalHeld', endingLabel: 'goalHeld', tip: 'goalHeldTip' },
 };
 const RESULT_SCENES = {
   clean: { text: 'cleanResultScene', clip: 'closeClean' },
@@ -84,13 +85,13 @@ const clock = (elapsed) => '12:' + (32 + elapsed);
 
 function load() {
   const fresh = {
-    version: 2, loop: 1, known: ['future'], unlocked: [], compared: false, seen: false, epilogueSeen: false,
+    version: 2, loop: 1, known: ['future'], unlocked: [], compared: false, proofMicOff: false, seen: false, epilogueSeen: false,
     language: 'ko', sound: false, previous: null, leakOrigin: '', run: newRun(),
   };
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!saved || (saved.version !== 1 && saved.version !== fresh.version)) return fresh;
-    for (const flag of ['compared', 'seen', 'sound', 'epilogueSeen']) fresh[flag] = saved[flag] === true;
+    for (const flag of ['compared', 'proofMicOff', 'seen', 'sound', 'epilogueSeen']) fresh[flag] = saved[flag] === true;
     if (saved.language === 'en') fresh.language = 'en';
     if (Number.isSafeInteger(saved.loop) && saved.loop > 0) fresh.loop = saved.loop;
     if (Array.isArray(saved.known)) fresh.known = [...new Set([...fresh.known, ...saved.known.filter((id) => Object.hasOwn(CLUES, id))])];
@@ -117,6 +118,18 @@ function load() {
     if (run.leaked && !fresh.known.includes('leak')) fresh.known.push('leak');
     fresh.run.log = Array.isArray(run.log) ? run.log.filter((entry) =>
       Number.isInteger(entry?.minute) && entry.minute >= 0 && entry.minute <= LIMIT && Object.hasOwn(SCHOOL_COPY, entry.text)).slice(-20) : [];
+    if (run.outcome === 'backup') {
+      for (const entry of fresh.run.log) {
+        if (entry.text === 'backupClip') entry.minute = LIMIT - 1;
+      }
+    }
+    if (fresh.known.includes('proof') && !Object.hasOwn(saved, 'proofMicOff')) {
+      const proofIndex = fresh.run.log.findIndex((entry) => entry.text === 'logProof');
+      if (proofIndex >= 0) {
+        fresh.proofMicOff = fresh.run.log.slice(0, proofIndex)
+          .some((entry) => entry.text === 'micMessage' || entry.text === 'logLeakOff');
+      }
+    }
     if (run.leaked) fresh.leakOrigin = 'rewound';
     else if (!fresh.leakOrigin && fresh.run.log.some((entry) => entry.text === 'excerptLogged')) fresh.leakOrigin = 'future';
     return fresh;
@@ -193,6 +206,9 @@ function renderSound() {
 }
 
 function record(key, minute = game.run.elapsed) { game.run.log.push({ minute, text: key }); }
+function recordBackupBeat(key, minute) {
+  if (!game.run.log.some((entry) => entry.text === key)) record(key, minute);
+}
 
 const awaitingQuestion = (run) => run.queued && run.elapsed === CUE_TIME && !run.swapBriefPending && !run.questionDelivered && !run.outcome;
 function confirmQuestionDelivery(run = game.run) {
@@ -290,7 +306,7 @@ function endingFor(run) {
     ...ending,
     decision: missedDeparture ? 'endHeldMissedDeparture' : 'endHeldByChoice',
     story: !explained && !run.leakMicOff ? 'endHeldOther' : ending.story,
-    next: missedDeparture ? 'rewindBackupHint' : ending.next,
+    next: missedDeparture ? 'rewindBackupHint' : '',
   };
 }
 
@@ -406,12 +422,19 @@ function startClassrooms(kind) {
     scene.phase = CLASSROOM_BEATS[index];
     if (scene.phase === 'ready') {
       run.classroomAnswersReady = true;
-      save();
       if (ending) {
         ending.minute = LIMIT;
+        recordBackupBeat('logBackupBothAnswers', ending.minute);
         later(ending, 850, () => openBackupGrading(ending));
       }
+      save();
+    } else if (ending && scene.phase === 'solving') {
+      playEndingBeat(ending, 'backupClassroom', game.sound ? 5500 : 3200, () => showPhase(index + 1));
     } else {
+      if (ending && scene.phase === 'first') {
+        recordBackupBeat('logBackupFirstAnswer', ending.minute);
+        save();
+      }
       setTimeout(() => showPhase(index + 1), CLASSROOM_DELAYS[index]);
     }
     render();
@@ -419,12 +442,20 @@ function startClassrooms(kind) {
       $('actions').querySelector('[data-action="closeAnswers"]')?.focus({ preventScroll: true });
     }
   }
-  showPhase(0);
+  const firstAnswerLogged = ending && run.log.some((entry) => entry.text === 'logBackupFirstAnswer');
+  showPhase(firstAnswerLogged ? CLASSROOM_BEATS.indexOf('first') : 0);
+}
+
+function playBackupExplanation(scene) {
+  playEndingBeat(scene, endingFor(game.run).clip, game.sound ? 7600 : 2300, () => showBackupQuestion(scene));
 }
 
 function showBackupQuestion(scene) {
   clearSceneTimers(scene);
   scene.beat = 'question';
+  recordBackupBeat('logBackup', scene.minute);
+  recordBackupBeat('backupClip', scene.minute);
+  save();
   render();
   $('ending-title').focus();
   playAudio('backup');
@@ -469,6 +500,10 @@ function showWinnerReactions(scene) {
 
 function beginWinnerAnnouncement(scene) {
   scene.beat = 'announce';
+  if (scene.kind === 'backup') {
+    recordBackupBeat('logBackupAnnounced', scene.minute);
+    save();
+  }
   render();
   $('ending-title').focus({ preventScroll: true });
   playEndingBeat(scene, WINNER_AUDIO[scene.kind], 2900, () => showWinnerReactions(scene));
@@ -491,7 +526,7 @@ function finish(kind) {
   if (kind === 'clean') { beginWinnerAnnouncement(scene); return; }
   render();
   $('ending-title').focus({ preventScroll: true });
-  if (kind === 'backup') playEndingBeat(scene, endingFor(r).clip, game.sound ? 7600 : 2300, () => showBackupQuestion(scene));
+  if (kind === 'backup') playBackupExplanation(scene);
   if (kind === 'held') {
     const duration = game.sound ? (r.briefed ? 10000 : 8500) : 5300;
     playEndingBeat(scene, endingFor(r).clip, duration, () => showHoldReceipts(scene));
@@ -592,12 +627,15 @@ function rewind(reason = '') {
 
 const retryEnvelopeAirtime = () => ['logBackupAirtimeMissed', 'logBackupVoluntaryRewind', 'logBackupEnvelopeRewind'].includes(game.previous?.text);
 const openingTurn = () => game.loop === 1 && game.run.elapsed === 0 && !game.run.outcome;
+const missingEndingGoals = () => Object.keys(LOOP_GOALS).filter((goal) => !game.unlocked.includes(goal));
 
 function recommendedGoal() {
   if (game.loop < 2) return '';
   if (game.previous?.text === 'logMicCheckRewind') return 'clean';
-  if (retryEnvelopeAirtime() || (game.previous?.text === 'logBackupClosed' && !game.unlocked.includes('backup'))) return 'backup';
-  return Object.keys(LOOP_GOALS).find((goal) => !game.unlocked.includes(goal)) ?? '';
+  const reason = game.previous?.text;
+  if (retryEnvelopeAirtime() && reason !== 'logBackupAirtimeMissed') return 'backup';
+  if (['logBackupAirtimeMissed', 'logBackupClosed'].includes(reason) && !game.unlocked.includes('backup')) return 'backup';
+  return missingEndingGoals()[0] ?? '';
 }
 
 const activeGoal = () => game.run.goal || recommendedGoal();
@@ -657,10 +695,8 @@ function actionChoices() {
       playAudio('teacherHandoff');
     });
     if (r.backup && !r.returned && r.elapsed <= 6) offer('returnStudio', 'returnDetail', () => step('returnMessage', (run) => { run.room = 'studio'; run.returned = true; }));
-    if (r.returned) offer('useBackup', lastChance ? 'finalBackupDetail' : 'useDetail', () => step('backupClip', (run) => {
-      briefJiu(run);
-      record('logBackup');
-    }, 'backup'), false, lastChance ? 'finalBackupAir' : 'useBackup');
+    if (r.returned) offer('useBackup', lastChance ? 'finalBackupDetail' : 'useDetail',
+      () => step('', briefJiu, 'backup'), false, lastChance ? 'finalBackupAir' : 'useBackup');
     const holdDetail = lastChance ? 'finalHoldDetail' : canLeaveNow ? 'handoffHoldDetail' : 'holdDetail';
     offer('hold', holdDetail, () => step('', briefJiu, 'held'), false, lastChance ? 'finalBackupHold' : 'hold');
     if (r.room === 'studio' && !known('practice')) offer('practice', clueWarning || 'practiceDetail', () => step('practiceMessage', () => learn('practice')));
@@ -820,7 +856,7 @@ function gradeAnswer(kind, answer) {
   gradeFeedback = '';
   if (kind === 'clean') { step('checkAnswersMessage', (run) => { run.checked = true; }); return; }
   game.run.checked = true;
-  record('backupGraded');
+  recordBackupBeat('backupGraded', endingScene.minute);
   endingScene.beat = 'winnerReady';
   save();
   render();
@@ -898,7 +934,12 @@ function renderClassrooms(view) {
     $(team + '-classroom').dataset.state = state;
     text(team + '-classroom-status', arrived ? 'classroomAnswerIn' : phase === 'received' ? 'classroomHeard' : 'classroomSolving');
   }
-  const captions = { received: 'classroomBothHeard', solving: 'classroomThinking', first: kind === 'clean' ? 'classroomCleanFirst' : 'classroomBackupFirst', ready: 'classroomBothIn' };
+  const captions = {
+    received: 'classroomBothHeard',
+    solving: kind === 'backup' ? 'classroomBackupAsks' : 'classroomThinking',
+    first: kind === 'backup' ? 'classroomBackupFirst' : 'classroomCleanFirst',
+    ready: 'classroomBothIn',
+  };
   const message = t(captions[phase]);
   if ($('classrooms-line').textContent !== message) $('classrooms-line').textContent = message;
 }
@@ -1118,7 +1159,14 @@ function renderEnding(live) {
   text('ending-title', ending.title);
   text('ending-caption', ending.caption);
   text('ending-story', ending.story);
-  text('ending-next', epilogueUnlocked() ? 'endAll' : ending.next);
+  const remaining = missingEndingGoals();
+  if (epilogueUnlocked()) text('ending-next', 'endAll');
+  else {
+    const backupHint = remaining.includes('backup') && ending.next;
+    const hint = backupHint || LOOP_GOALS[remaining[0]].tip;
+    const labels = remaining.map((id) => t(LOOP_GOALS[id].endingLabel)).join(', ');
+    text('ending-next', 'remainingEndings', labels, t(hint));
+  }
 }
 function render() {
   const r = game.run;
@@ -1244,12 +1292,15 @@ function renderComparison() {
   }
   $('compare').disabled = selected.size !== 2 || known('proof');
   const r = game.run;
-  const readyToConnect = game.compared && !known('proof') && known('mic') && known('schedule');
+  const proven = known('proof');
+  const readyToConnect = game.compared && !proven && known('mic') && known('schedule');
   $('source-choice').hidden = !readyToConnect;
-  $('compare-evidence').hidden = !readyToConnect;
+  $('compare-evidence').hidden = !readyToConnect && !proven;
+  for (const id of ['proof-taps-evidence', 'proof-files-evidence']) $(id)?.toggleAttribute('hidden', !proven);
   text('source-prompt', r.leaked ? 'sourcePrompt' : 'sourcePromptFuture');
   const micWasOff = r.leaked ? r.leakMicOff : !r.mic;
-  text('compare-mic-evidence', micWasOff ? 'compareMicOffEvidence' : 'compareMicIndependentEvidence');
+  text('compare-mic-evidence', proven && game.proofMicOff ? 'proofMicOffEvidence'
+    : !proven && micWasOff ? 'compareMicOffEvidence' : 'compareMicIndependentEvidence');
   $('connect').disabled = !selectedSource;
   for (const button of $('source-choice').querySelectorAll('[data-source]')) {
     button.setAttribute('aria-pressed', String(button.dataset.source === selectedSource));
@@ -1300,11 +1351,13 @@ $('connect').addEventListener('click', () => {
     return;
   }
   learn('proof');
+  game.proofMicOff = game.run.leaked ? game.run.leakMicOff : !game.run.mic;
   if (!game.run.outcome) record('logProof');
   comparisonFeedback = '';
   save();
   renderJournal();
   render();
+  $('compare-result').scrollIntoView({ block: 'center' });
   $('compare-feedback').focus({ preventScroll: true });
 });
 $('journal-open').addEventListener('click', openJournal);
@@ -1497,12 +1550,17 @@ $('language').addEventListener('click', () => {
 
 renderLanguage();
 if (game.run.outcome === 'backup' && game.run.backupGradePending) {
-  const beat = game.run.checked ? 'winnerReady' : game.run.classroomAnswersReady ? 'answers'
-    : game.run.backupQuestionDelivered ? 'classrooms' : 'question';
-  const minute = beat === 'classrooms' || beat === 'question' ? LIMIT - 1 : LIMIT;
+  const run = game.run;
+  const aired = run.log.some((entry) => entry.text === 'backupClip');
+  const beat = run.checked ? 'winnerReady' : run.classroomAnswersReady ? 'answers'
+    : run.backupQuestionDelivered ? 'classrooms' : aired ? 'question' : 'explain';
+  const minute = ['classrooms', 'question', 'explain'].includes(beat) ? LIMIT - 1 : LIMIT;
   endingScene = { kind: 'backup', beat, minute, timers: [] };
   if (beat === 'classrooms') startClassrooms('backup');
-  else render();
+  else {
+    render();
+    if (beat === 'explain') playBackupExplanation(endingScene);
+  }
 } else if (game.run.queued && !game.run.outcome && !game.run.answersClosed && game.run.questionDelivered && !game.run.classroomAnswersReady) {
   startClassrooms('clean');
 } else {
