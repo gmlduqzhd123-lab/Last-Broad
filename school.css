@@ -303,3 +303,9 @@ dialog::backdrop { background: #080e17bb; }
   .epilogue-view[data-shot="forward"] .intro-copy { animation: reveal .35s ease-out both; }
   @keyframes reveal { from { opacity: .5; transform: translateY(4px); } }
 }
+
+/* 엽쌤 공통: 하단 문구, 휴대폰에서 "앱 " 숨김 */
+.ys-credit { margin: 22px 0 10px; text-align: center; font-size: .78rem; color: #9fb0b2; }
+.ys-credit a { color: inherit; }
+@media (max-width: 700px) { .ys-wide { display: none; } .tools { gap: 5px; } .tools .utility { padding-inline: 7px; } }
+@media (max-width: 400px) { .tools .utility { padding-inline: 5px; font-size: .74rem; } .brand > div > span { display: none; } }
